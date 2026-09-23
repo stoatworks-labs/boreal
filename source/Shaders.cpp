@@ -743,7 +743,7 @@ vec4 upsampled( vec3 d )
 // Stars: a seeded field on the celestial sphere, cells on a cube, at most one
 // star per cell. Magnitudes from the power-law count N(<m) ~ 10^(0.5 m) up
 // to m = 6.5; a mag 0 star gives 2.54e-6 lux (Allen's Astrophysical
-// Quantities). Point spread 0.8 px.
+// Quantities). Point spread 0.6 px (1 sigma).
 //--------------------------------------------------------------------------
 const int STAR_CELLS = 64;
 
@@ -772,7 +772,7 @@ vec3 starLight( vec3 dLocal, float zenith )
 	}
 	vec2 cellF  = ( fuv * 0.5 + 0.5 ) * float( STAR_CELLS );
 	ivec2 cell0 = ivec2( floor( cellF ) );
-	float sigma = 0.8 * PixelAngle;
+	float sigma = 0.6 * PixelAngle;
 	vec3 light  = vec3( 0.0 );
 	for( int j = -1; j <= 1; ++j )
 		for( int i = -1; i <= 1; ++i )
