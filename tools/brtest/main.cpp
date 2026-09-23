@@ -683,16 +683,26 @@ int runBench()
 		if( !rig.Render( 120 ) )
 			return 1;
 		glFinish();
-		constexpr int kTimed = 60;
-		const auto start     = std::chrono::steady_clock::now();
-		if( !rig.Render( kTimed ) )
-			return 1;
-		glFinish();
-		const auto end = std::chrono::steady_clock::now();
-		const double ms = std::chrono::duration< double, std::milli >( end - start ).count() / kTimed;
-		std::printf( "  %-6s %6.2f ms/frame  (%4.1f%% of 60 fps; march %dx%d; %d nodes)\n", size.name, ms,
-		             100.0 * ms / ( 1000.0 / 60.0 ), rig.plugin.MarchWidth(), rig.plugin.MarchHeight(),
-		             rig.plugin.LastSnapshot().count );
+		//Each frame timed on its own, glFinish on both sides: the mean includes
+		//the frames on which the worker's RK4 step (13 ms at the node cap)
+		//outlasts the GPU and the render waits for it; the median does not.
+		constexpr int kTimed = 120;
+		std::vector< double > times;
+		for( int f = 0; f < kTimed; ++f )
+		{
+			const auto start = std::chrono::steady_clock::now();
+			if( !rig.Render( 1 ) )
+				return 1;
+			glFinish();
+			times.push_back( std::chrono::duration< double, std::milli >( std::chrono::steady_clock::now() - start ).count() );
+		}
+		double mean = 0.0;
+		for( double t : times )
+			mean += t / kTimed;
+		std::sort( times.begin(), times.end() );
+		std::printf( "  %-6s median %5.2f ms/frame, mean %5.2f, worst %5.2f  (median %4.1f%% of 60 fps; march %dx%d; %d nodes)\n",
+		             size.name, times[ kTimed / 2 ], mean, times.back(), 100.0 * times[ kTimed / 2 ] / ( 1000.0 / 60.0 ),
+		             rig.plugin.MarchWidth(), rig.plugin.MarchHeight(), rig.plugin.LastSnapshot().count );
 	}
 	return 0;
 }
