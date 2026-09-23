@@ -77,8 +77,11 @@ inline constexpr Preset kPresets[] = {
 	//One quiet homogeneous arc low in the north: soft sheet, few curls.
 	{ "Quiet Arc",   { 0, 0.62f, 0.68f, 0.5f, 0.375f, 1, 0.4223f, 0.33f, 0.55f, 0.16f, 0.52f, 0.63f, 0.80f, 0.3f, 0.66f, 0.12f, 0.2f, 0.55f, 0.3162f, 0.3333f, 0, 0.5f, 0.22f, 0.4f, 0.5f, 0.45f, 0, 0.4f, 1, 2 } },
 	//Overhead, looking up the field: three disturbed arcs converging on the
-	//magnetic zenith, which is 13 degrees south of the zenith at dip 77.
-	{ "Corona",      { 0, 0.29f, 0.68f, 0.5f, 0.5f, 3, 0.3f, 0.78f, 0.35f, 0.45f, 0.5f, 0.68f, 0.93f, 0.85f, 0.35f, 0.7f, 0.5f, 0.6333f, 0.3162f, 0.3333f, 0, 1.0f, 0.87f, 0.78f, 0.5f, 0.3f, 0, 0.4f, 1, 0 } },
+	//magnetic zenith, 13 degrees south of the zenith at dip 77. The middle arc
+	//sits on the observer's own field line (110 cot 77 = 25 km equatorward):
+	//field-aligned sheets all share one vanishing line through the magnetic
+	//zenith, and only an arc through that plane crosses it (AGENTS.md).
+	{ "Corona",      { 0, 0.2525f, 0.68f, 0.5f, 0.5f, 3, 0.45f, 0.78f, 0.45f, 0.55f, 0.5f, 0.68f, 0.93f, 0.85f, 0.35f, 0.7f, 0.5f, 0.6333f, 0.3162f, 0.3333f, 0, 1.0f, 0.87f, 0.5556f, 0.5f, 0.3f, 0, 0.4f, 1, 0 } },
 	//Solar maximum, soft precipitation: the red line dominates and lingers.
 	{ "Red Storm",   { 0, 0.45f, 0.68f, 0.5f, 0.5f, 2, 0.68f, 0.4f, 0.5f, 0.35f, 0.5f, 0.2f, 0.85f, 0.4f, 0.7f, 0.2f, 1.0f, 0.83f, 0.3162f, 0.3333f, 0, 0.5f, 0.4f, 0.6f, 0.5f, 0.5f, 0, 0.4f, 1, 2 } },
 	//A single band of strong rays.
