@@ -138,7 +138,7 @@ segment into the footprint map; a curtain thinner than the map's texel is
 widened to it and dimmed by the same factor, so the flux integrated across it
 is kept.
 
-**Rays are the one stochastic texture.** Eight PCG-seeded cosines of 1.5–10 km
+**Rays are the one stochastic texture.** Eight PCG-seeded cosines of 0.5–5 km
 wavelength along the sheet's Lagrangian label, drifting at 0.01–0.06 Hz,
 modulate the flux as (1 − Rays) + Rays·s², s normalised so E[s²] = 1. They
 stand for Alfvénic filamentation of the field-aligned current, which this
@@ -341,9 +341,13 @@ allocate before binding, `FFGLFBO::Release` leaks (PassBuffer), the OBJECT
 library, `SetTextParameter` for About, integer hashing only, the clock-unit vote
 and the settle-jump, primed onsets.
 
-## Every numeric check, and where its tolerance comes from
+## Would this hold on another rasteriser, at another raster?
 
-Asked of each: would it hold on another rasteriser, at another raster?
+Every numeric check, where its tolerance comes from, and the raster it runs at.
+CI's raster is 320x180; every pixel check either runs there or says why its
+raster does not matter. CI itself runs only `brtest --offline` (the rows marked
+CPU, plus their negative controls) and glslc: a macOS runner has no accelerated
+GL. The pixel rows run in `tools/verify.sh`, on this Mac's GPU.
 
 | check | bound | why that number | raster / rasteriser |
 | --- | --- | --- | --- |
@@ -356,18 +360,43 @@ Asked of each: would it hold on another rasteriser, at another raster?
 | `--knight` | 1e-6 | float storage of ln E₀ | CPU |
 | `--deposition` peaks | 3 km | Fig. 3a read to ±1.5 km, 1 km table, a different MSIS atmosphere | CPU |
 | `--deposition` energy | 1e-12; Fang's raw ±5% | trapezoid identity; the paper's stated accuracy | CPU |
-| `--quench` | 1e-5 | the GPU texture is float32 (read back) | GPU memory only |
-| `--lifetime` | 3e-7 per frame | a float exp() of a float ratio each frame, compounding | any GPU with IEEE float exp to a few ulp |
-| `--colour` | 2e-4 in xy | float XYZ | any; one raster suffices (chromaticity of a pixel) |
-| `--corona` | 1 px | the VP from ~9 principal axes; float geometry is 1e-3 px | runs at 640×360 and 1280×720; depends on the march, not rasterisation |
+| `--quench` | 1e-5 | the GPU texture is float32 (read back) | 64×64; texture memory, not rasterisation: raster-free |
+| `--lifetime` | 3e-7 per frame | a float exp() of a float ratio each frame, compounding | 320×180; any GPU with IEEE float exp to a few ulp |
+| `--colour` | 2e-4 in xy | float XYZ | 256×144; one raster suffices (the chromaticity of a flat field) |
+| `--corona` | 1 px | the VP from ~9 principal axes; float geometry is 1e-3 px | 320×180, 640×360 and 1280×720 (misses 0.07–0.32 px); a least-squares meeting of whole streaks, so the bound does not coarsen with the pixel |
 | `--vanrhijn` | layer-thickness correction + 2e-5 relative | the Gaussian layer vs a sheet, computed in double | 257² and 513² fisheye |
 | `--extinction` | 1e-5 airmass, 1e-4 transmission | float pow/exp | probe of the shipped GLSL |
-| `--over-check` | bit-exact | the clip is returned untouched | exact on any GPU (no arithmetic on the path) |
-| `--determinism` | bit-exact | same machine, same driver | across machines NOT claimed |
-| `--onset` | exactly 1 | deterministic feed | CPU |
+| `--over-check` | bit-exact | the clip is returned untouched | 320×180; exact on any GPU (no arithmetic on the path) |
+| `--determinism` | bit-exact | same machine, same driver | 320×180; across machines NOT claimed |
+| `--onset` | exactly 1 | deterministic feed | 160×90; the analyser is CPU, the render only clocks it |
+| `--defaults`, `--names` | exact | the preset table and the 16-byte name field | CPU (`--offline`) |
+| `--state` | exact | the GL state the host hands over is the state it gets back | 320×180; state, not pixels: raster-free |
+| `--quadrants` | footprints in every quadrant of the sky | the half-sky defect it was written for | square fisheye; a count, not a tolerance |
 
 Physics checks run in km/s/nm on the CPU and are raster-independent by
-construction; the two pixel checks run at two rasters.
+construction; the pixel checks run at 320×180 or say why the raster is moot.
+
+**Resize mid-run.** Every buffer that carries state across frames (the
+production map, the two lifetime states, occupancy, the all-sky) is sized by
+`kMapSize` / `kAllSkySize`, never by the host's raster; only the march buffer,
+which is rewritten whole every frame, follows the raster. So a resize cannot
+clear the previous frame (photofinish's bug), and no resize-mid-run check was
+added: there is nothing raster-sized for it to catch. Revisit if a state
+buffer ever becomes raster-sized.
+
+### The recorded mutation
+
+`tools/mutate.sh` (run by verify.sh) changes one character of shipped code and
+requires a named check to fail. The GLSL mutants, and what caught them:
+
+- `float keep = exp( -Dt / tau );` → `exp( -Dt * tau )` in the update pass:
+  caught by `--lifetime` (the decay no longer matches the exact integrator).
+- Kasten & Young's `0.50572` → `0.50672` in the march's airmass: caught by
+  `--extinction`, which probes the shipped GLSL, not a copy.
+- (engine) `sin( a - b )` expanded with the wrong sign in Sheet.cpp: caught by
+  `--kh`.
+
+This proves the harness drives the shaders the plugin ships, not a second copy.
 
 ## Shape of the code
 

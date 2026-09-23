@@ -20,6 +20,13 @@ or anything that decides what one lifetime per line means.
 - Set anything by name: `./build/brtest --set "Preset=3" --set "Camera=1"`
 - Film: `./build/brtest --film 1800 --size 1280x720 --script docs/demo.cues | ffmpeg -f rawvideo -pix_fmt rgba -s 1280x720 -r 60 -i - -c:v libx264 -pix_fmt yuv420p docs/demo.mp4`
 - A clip through the effect: `ffmpeg -i in.mov -f rawvideo -pix_fmt rgba - | ./build/brtest --over --pipe --size WxH | ffmpeg …`
+  A cue line is `frame  Parameter Name  value` (`#` starts a comment), in the same
+  units as `--set`. Values interpolate linearly between a name's cues and hold
+  before the first and after the last, so a step needs two cues a frame apart and
+  a button press is three (0, 1, 0). Frame *n* is clocked at n / 60 s. An unknown
+  name exits 2 before any frame; a partial frame at EOF ends the stream with exit
+  0; a reader that hangs up ends `--pipe`/`--film` with exit 1 (SIGPIPE is
+  ignored), never a silent 141.
 - Rebake the atmosphere (needs `pip install pymsis`): `python3 tools/bake_atmosphere.py`
 
 ## Verify
@@ -30,12 +37,15 @@ or anything that decides what one lifetime per line means.
   (circulation, impulse, Hamiltonian over 10 min), `--knight`.
 - **The atmosphere**: `--deposition` (Fang 2008 against Fang 2010 and the
   paper's figure), `--quench`, `--lifetime`.
-- **The camera**: `--colour`, `--corona` (two rasters), `--vanrhijn` (two
+- **The camera**: `--colour`, `--corona` (three rasters, 320x180 up), `--vanrhijn` (two
   rasters), `--extinction` (probes the shipped GLSL).
 - **The plugin**: `--over-check`, `--determinism`, `--onset`, `--defaults`,
   `--names`, `--state`.
 - **The checks can fail**: `--negative` (14 wrong models), `tools/mutate.sh`
   (one character of GLSL and engine).
+- What CI runs: `--offline` (the checks that need no GL context, and their
+  negative controls; says loudly that the pixel checks were not run) and
+  `tools/glslc.sh`. verify.sh runs both too, plus the `--pipe` format checks.
 - No dead controls: `python3 tools/sweep.py` (39 parameters, both plugins).
 - Preset rows: `python3 tools/check_presets.py`.
 - Cost: `--bench` (720p/1080p/4K), `--engine` (CPU per RK4 step at N = 512,

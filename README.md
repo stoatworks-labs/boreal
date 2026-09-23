@@ -11,7 +11,7 @@
 > red/green ratio the GPU samples to the collisional-quenching formula at every
 > height, and `--lifetime` holds the populations to the exponential decay the
 > table says. `--corona` finds the rays' vanishing point within **0.3 px** of
-> the magnetic zenith at two rasters and in both hemispheres. `brtest
+> the magnetic zenith at three rasters and in both hemispheres. `brtest
 > --negative` re-runs fourteen checks against deliberately wrong models, and
 > `tools/mutate.sh` changes one character of the shipped shaders and engine;
 > every one is caught. A control sweep fails if any parameter does nothing
@@ -122,7 +122,7 @@ What is measured, on this machine:
 | quenching | red/green against the formula at all 721 heights to **1.6×10⁻⁷**; at 5 keV 630.0 nm peaks at **221 km**, 557.7 nm at **104 km** |
 | lifetime | with the flux off, 557.7 (τ 0.705 s) and 630.0 (τ 40.9 s) decay as e^{−t/τ} to **8×10⁻⁶** and **5×10⁻⁵** over 3 s and 20 s; 427.8 and 1P are exactly zero the next frame |
 | colour | each line alone at its CIE 1931 chromaticity to the fifth decimal (557.7 nm at 0.3569, 0.6401 — outside sRGB, gamut-mapped at constant luminance) |
-| corona | rays meet the magnetic zenith to **0.15–0.32 px**, 640×360 and 1280×720, both hemispheres |
+| corona | rays meet the magnetic zenith to **0.07–0.32 px**, 320×180, 640×360 and 1280×720, both hemispheres |
 | airglow | brightens as van Rhijn's function to **8×10⁻⁷ kR** per kR, to 80° zenith, 257² and 513² fisheye (V(80°) = 4.12 against sec 80° = 5.76) |
 | extinction | the shipped shader's airmass against Kasten & Young to **9×10⁻⁷**, transmission to **1.2×10⁻⁵**, 8 wavelengths × 91 angles |
 | Over | Mix 0, and no light, return the clip **bit-exact**; the Alpha mask keeps every opaque pixel exact |
@@ -186,7 +186,7 @@ The offline harness renders the real plugin classes headlessly:
     ./build/brtest --quench           red/green by the quenching formula, and where each peaks
     ./build/brtest --lifetime         the populations decay as the table says
     ./build/brtest --colour           each line at its CIE chromaticity
-    ./build/brtest --corona           rays converge on the magnetic zenith, two rasters
+    ./build/brtest --corona           rays converge on the magnetic zenith, three rasters
     ./build/brtest --vanrhijn         the airglow's brightening, two rasters
     ./build/brtest --extinction       the shipped shader's Kasten & Young
     ./build/brtest --over-check       the clip untouched where it must be
@@ -194,6 +194,7 @@ The offline harness renders the real plugin classes headlessly:
     ./build/brtest --onset            the first hit after a trigger counts
     ./build/brtest --defaults --names --state
     ./build/brtest --negative         every check above, against a wrong model
+    ./build/brtest --offline          the no-GL subset and its negative controls (what CI runs)
     tools/mutate.sh                   one character changed, a check must fail
     python3 tools/sweep.py            no control is silently dead
     ./build/brtest --bench            720p through 4K

@@ -50,122 +50,6 @@ reserved_words() {
 }
 
 #---------------------------------------------------------------------------
-# Every shader, through a real GLSL compiler, before a host has to find out.
-#
-# A shader that will not compile presents to an operator as "the effect does
-# nothing", with the real message buried in the diagnostics log -- so without
-# this it is caught at run time, in a host, or not at all.
-#
-# --target-env=opengl4.5 with -fauto-map-locations: glslc targets SPIR-V, which
-# demands an explicit layout( location ) on every uniform and varying. Those are
-# Vulkan rules and not GLSL ones, and without the flag every shader "fails" for
-# reasons that have nothing to do with the code.
-#
-# glslc is optional -- `brew install shaderc` -- so a machine without it skips
-# rather than fails.
-#---------------------------------------------------------------------------
-shaders_compile() {
-	local dir bad=0 n=0 shader
-
-	if ! command -v glslc >/dev/null 2>&1; then
-		printf '   skipped: glslc not installed (brew install shaderc)\n'
-		return 0
-	fi
-
-	dir="$( mktemp -d )"
-
-	python3 - "$dir" <<'SHADERS_PY'
-import re, sys, pathlib
-out = pathlib.Path( sys.argv[ 1 ] )
-
-# Where this repo keeps its GLSL.
-FILES = [
-	"source/Shaders.cpp",
-]
-
-# Shaders the plugin assembles at run time: kVersion + kCommon + pieces, the
-# order Shaders.cpp's Assemble() and Boreal.cpp's InitGL use. Every pass is
-# assembled, so every one is listed; a name that has moved is a KeyError.
-ASSEMBLED = {
-	"quad":      [ "kVersion", "kQuadVertex" ],
-	"splat_v":   [ "kVersion", "kCommon", "kSplatVertex" ],
-	"splat_f":   [ "kVersion", "kCommon", "kSplatFragment" ],
-	"update":    [ "kVersion", "kCommon", "kUpdateFragment" ],
-	"occupancy": [ "kVersion", "kCommon", "kOccupancyFragment" ],
-	"march":     [ "kVersion", "kCommon", "kMarchLibrary", "kMarchFragment" ],
-	"allsky":    [ "kVersion", "kCommon", "kMarchLibrary", "kAllSkyFragment" ],
-	"composite": [ "kVersion", "kCommon", "kMarchLibrary", "kCompositeFragment" ],
-}
-
-named, unnamed = {}, []
-for f in FILES:
-	text = pathlib.Path( f ).read_text()
-	for m in re.finditer( r'(?:(\w+)\s*(?:\[\s*\])?\s*=\s*)?R"\((.*?)\)"', text, re.S ):
-		if m.group( 1 ): named[ m.group( 1 ) ] = m.group( 2 )
-		else:            unnamed.append( m.group( 2 ) )
-	# Adjacent string literals, joined: MSVC C2026 caps one literal at about
-	# 16 KB, so a shader that outgrows it is split and has to be rejoined here.
-	for m in re.finditer( r'(\w+)\s*=\s*((?:"(?:[^"\\\n]|\\.)*"\s*)+);', text ):
-		named.setdefault( m.group( 1 ), "".join(
-			s.encode().decode( "unicode_escape" )
-			for s in re.findall( r'"((?:[^"\\\n]|\\.)*)"', m.group( 2 ) ) ) )
-
-def emit( name, body ):
-	# The vertex shader is the one that writes gl_Position; everything else is a
-	# fragment shader. glslc takes the stage from the extension.
-	ext = ".vert" if re.search( r"\bgl_Position\s*=", body ) else ".frag"
-	( out / ( name + ext ) ).write_text( body )
-
-def piece( p ):
-	# An int indexes the raw strings that are not assigned to a name, in source
-	# order. A literal starts with #version. Anything else names a constant
-	# above -- and a name that has moved is a KeyError here, not a silent skip.
-	if isinstance( p, int ):       return unnamed[ p ]
-	if p.startswith( "#version" ): return p
-	return named[ p ]
-
-for name, body in named.items():
-	if body.lstrip().startswith( "#version" ) and "void main" in body:
-		emit( name, body )
-
-# A piece that no pass uses is a pass that is not being checked.
-used = { p for parts in ASSEMBLED.values() for p in parts }
-for name in named:
-	if name.startswith( "k" ) and name not in used:
-		sys.exit( f"{name} is a shader piece no ASSEMBLED entry uses" )
-
-for name, parts in ASSEMBLED.items():
-	emit( name, "".join( piece( p ) for p in parts ) )
-SHADERS_PY
-
-	for shader in "$dir"/*.vert "$dir"/*.frag; do
-		[ -e "$shader" ] || continue
-		n=$(( n + 1 ))
-		if ! glslc --target-env=opengl4.5 -fauto-map-locations \
-			   "$shader" -o /dev/null 2>"$dir/err"; then
-			printf '   %s does not compile\n' "$( basename "$shader" )"
-			sed "s|$dir/||; s|^|      |" "$dir/err"
-			bad=$(( bad + 1 ))
-		fi
-	done
-
-	if [ "$n" -eq 0 ]; then
-		# No shaders at all is a FAILURE, not a pass. It means the extraction
-		# above has lost track of where this repo keeps its GLSL, and a check
-		# that silently looks at nothing is worse than no check.
-		printf '   no shaders were extracted -- the extraction has gone stale\n'
-		rm -rf "$dir"
-		return 1
-	fi
-
-	if [ "$bad" -eq 0 ]; then
-		printf '   %d shaders, all compile\n' "$n"
-	fi
-	rm -rf "$dir"
-	return "$bad"
-}
-
-#---------------------------------------------------------------------------
 step "GLSL reserved words"
 #---------------------------------------------------------------------------
 reserved_words || fail "a GLSL reserved word is used as an identifier"
@@ -173,7 +57,7 @@ reserved_words || fail "a GLSL reserved word is used as an identifier"
 #---------------------------------------------------------------------------
 step "Shaders"
 #---------------------------------------------------------------------------
-shaders_compile || fail "a shader does not compile"
+tools/glslc.sh || fail "a shader does not compile"
 
 #---------------------------------------------------------------------------
 step "Submodule"
@@ -181,7 +65,9 @@ step "Submodule"
 if [[ ! -f external/ffgl/CMakeLists.txt ]]; then
 	fail "FFGL SDK missing -- run: git submodule update --init --recursive"
 fi
-echo "ok   FFGL SDK present at $(git -C external/ffgl rev-parse --short HEAD)"
+pin="$(git -C external/ffgl rev-parse --short=7 HEAD)"
+[[ "$pin" == "b1afaf9" ]] || fail "FFGL SDK at $pin, not the fleet's b1afaf9"
+echo "ok   FFGL SDK pinned at $pin"
 
 #---------------------------------------------------------------------------
 step "Build (universal)"
@@ -264,6 +150,52 @@ for check in kh invariants knight deposition quench lifetime colour corona vanrh
 	"$BUILD/brtest" --$check || fail "brtest --$check"
 done
 python3 tools/check_presets.py || fail "the preset table"
+
+#---------------------------------------------------------------------------
+step "Offline (what CI runs)"
+#---------------------------------------------------------------------------
+# The no-GL subset, exactly as CI runs it, so the selector cannot rot here
+# while CI goes on passing.
+"$BUILD/brtest" --offline >/dev/null || fail "brtest --offline"
+echo "ok   brtest --offline"
+
+#---------------------------------------------------------------------------
+step "Pipe"
+#---------------------------------------------------------------------------
+# The fleet's --pipe frame format, which the video renders through. Two and a
+# half frames in must be exactly two out and a clean exit -- a partial frame is
+# the end of the stream, never a frame -- a cue naming no parameter must be
+# refused, and a reader that hangs up must end the run with exit 1, not
+# SIGPIPE's silent 141.
+frame=$(( 64 * 36 * 4 ))
+raw=$( mktemp ); cues=$( mktemp )
+head -c $(( frame * 5 / 2 )) /dev/zero > "$raw"
+out=$( mktemp ); status=0
+"$BUILD/brtest" --over --pipe --size 64x36 < "$raw" > "$out" 2>/dev/null || status=$?
+got=$( wc -c < "$out" | tr -d ' ' ); rm -f "$out"
+[[ "$status" -eq 0 && "$got" == "$(( frame * 2 ))" ]] \
+	|| fail "2.5 frames in gave $got bytes out (want $(( frame * 2 ))), exit $status"
+echo "ok   2.5 frames in, exactly 2 frames out, clean exit"
+# Read from a file, not a pipe: a writer killed by SIGPIPE would fail the
+# pipeline whatever brtest did, and the refusal would pass for the wrong reason.
+printf '0 No Such Control 0.5\n' > "$cues"
+status=0
+"$BUILD/brtest" --over --pipe --size 64x36 --script "$cues" < "$raw" >/dev/null 2>&1 || status=$?
+[[ "$status" -eq 2 ]] || fail "a cue naming no parameter gave exit $status, not 2"
+echo "ok   a cue naming no parameter is refused (exit 2)"
+head -c $(( frame * 20 )) /dev/zero > "$raw"
+set +e
+"$BUILD/brtest" --over --pipe --size 64x36 < "$raw" 2>/dev/null | head -c 1 >/dev/null
+status=${PIPESTATUS[0]}
+set -e
+[[ "$status" -eq 1 ]] || fail "a closed stdout gave exit $status, not 1"
+set +e
+"$BUILD/brtest" --film 20 --size 64x36 2>/dev/null | head -c 1 >/dev/null
+status=${PIPESTATUS[0]}
+set -e
+[[ "$status" -eq 1 ]] || fail "--film into a closed stdout gave exit $status, not 1"
+echo "ok   a closed stdout ends --pipe and --film with exit 1, not SIGPIPE"
+rm -f "$raw" "$cues"
 
 #---------------------------------------------------------------------------
 step "Negative controls"

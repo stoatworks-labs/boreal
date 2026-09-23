@@ -11,6 +11,7 @@
         brtest --list                    every parameter and its default
         brtest --film N                  N frames, raw RGBA on stdout
         brtest --pipe                    raw frames in (Over), raw frames out
+        brtest --offline                 the checks that need no GL context (CI)
 
     `--script` is the fleet's cue format: `frame  Parameter Name  value` lines,
     held before the first key and after the last, linearly interpolated
@@ -41,6 +42,7 @@
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
+#include <csignal>
 #include <cstring>
 #include <fstream>
 #include <functional>
@@ -655,8 +657,14 @@ int runPipe( bool effect, int width, int height, const std::string& scriptPath, 
 		while( written < bytes.size() )
 		{
 			const ssize_t put = write( STDOUT_FILENO, bytes.data() + written, bytes.size() - written );
+			//The reader has gone (`| head -c 1`, ffmpeg dying). SIGPIPE is
+			//ignored in main(), so this is EPIPE and not a silent 141: say so
+			//and stop, rather than render on into a closed pipe.
 			if( put <= 0 )
+			{
+				std::fprintf( stderr, "stdout closed at frame %d\n", index );
 				return 1;
+			}
 			written += static_cast< size_t >( put );
 		}
 	}
@@ -1512,11 +1520,15 @@ bool meet( const std::vector< Line2 >& lines, double& x, double& y )
 
 int runCorona( const Perturb& perturb )
 {
-	std::printf( "\n=== corona: field-aligned rays converge on the magnetic zenith, +-1 px, at two rasters\n" );
+	std::printf( "\n=== corona: field-aligned rays converge on the magnetic zenith, +-1 px, at three rasters\n" );
+	//320x180 is CI's raster; 640x360 and 1280x720 are the development ones.
+	//The bound is one pixel at every raster: the meeting point is a least-
+	//squares fit to whole streaks, so it does not coarsen with the pixel.
 	for( int hemisphere = 0; hemisphere < 2; ++hemisphere )
-		for( int raster : { 0, 1 } )
+		for( int raster : { 0, 1, 2 } )
 		{
-			const int w = raster == 0 ? 640 : 1280, h = raster == 0 ? 360 : 720;
+			const int w = raster == 0 ? 320 : raster == 1 ? 640 : 1280;
+			const int h = raster == 0 ? 180 : raster == 1 ? 360 : 720;
 			Rig rig;
 			if( !rig.Init( w, h ) )
 				return 1;
@@ -2167,7 +2179,19 @@ const std::vector< CheckEntry >& checks()
 //===========================================================================
 // --negative
 //===========================================================================
-int runNegative()
+/// The checks that need no GL context: the engine and the CPU tables, in km,
+/// s and nm. The one place that knows which they are -- `--offline` (what CI
+/// runs, on a runner with no accelerated GL) is everything else's complement.
+bool isOffline( const std::string& flag )
+{
+	static const char* const offline[] = { "kh", "invariants", "knight", "deposition", "defaults", "names" };
+	for( const char* name : offline )
+		if( flag == name )
+			return true;
+	return false;
+}
+
+int runNegative( bool offlineOnly = false )
 {
 	struct Case
 	{
@@ -2197,6 +2221,11 @@ int runNegative()
 	add( "onset", runOnset, "run the analyser unprimed", []( Perturb& p ) { p.onsetUnprimed = true; } );
 	add( "quadrants", runQuadrants, "drop every footprint equatorward of the observer (the half-sky defect)", []( Perturb& p ) { p.quadrantsClip = true; } );
 	add( "defaults", runDefaults, "expect preset row 2 to be the defaults", []( Perturb& p ) { p.defaultsShifted = true; } );
+
+	if( offlineOnly )
+		cases.erase( std::remove_if( cases.begin(), cases.end(),
+		                             []( const Case& c ) { return !isOffline( c.name ); } ),
+		             cases.end() );
 
 	int unfalsifiable = 0;
 	for( const Case& c : cases )
@@ -2253,7 +2282,8 @@ int main( int argc, char** argv )
 			             "  --script PATH     cues for --pipe/--film: 'frame Name value'\n\n"
 			             "  checks: --kh --invariants --knight --deposition --quench --lifetime --colour\n"
 			             "          --corona --vanrhijn --extinction --over-check --determinism --onset\n"
-			             "          --defaults --names --state --negative --mutation-probe --bench --engine\n" );
+			             "          --defaults --names --state --negative --mutation-probe --bench --engine\n"
+			             "  --offline         the checks and negative controls that need no GL context\n" );
 			return 0;
 		}
 		else if( argument == "--out" && hasNext )
@@ -2308,6 +2338,26 @@ int main( int argc, char** argv )
 			std::printf( "%-3u %-18s %-9s %.4f\n", parameter.index, parameter.name.c_str(), parameter.kind.c_str(),
 			             parameter.value );
 		return 0;
+	}
+
+	//A reader that hangs up must end --pipe/--film with exit 1 and a message,
+	//not SIGPIPE's silent 141: ignored here, the write fails with EPIPE.
+	std::signal( SIGPIPE, SIG_IGN );
+
+	if( mode == "offline" )
+	{
+		//No context at all: this is what a runner with no accelerated GL can
+		//run. The skip is loud, so a green run is not read as one that
+		//checked the shaders against a driver.
+		int failed = 0;
+		for( const CheckEntry& check : checks() )
+			if( isOffline( check.flag ) )
+				failed |= check.run( Perturb {} );
+		failed |= runNegative( true );
+		std::printf( "\n  offline: the checks that need no GL context. The shader and pixel checks were NOT run --\n"
+		             "  tools/verify.sh runs them against a real driver, at 320x180 and above.\n"
+		             "\n  %s\n", failed == 0 ? "PASS" : "FAIL" );
+		return failed == 0 ? 0 : 1;
 	}
 
 	CGLContextObj context = createContext();

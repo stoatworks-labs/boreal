@@ -43,6 +43,27 @@ jobs:
       - name: Build
         run: cmake --build build --config Release --parallel
 
+      - name: Parameters
+        # No GL needed, so this one cannot be a runner problem.
+        run: ./build/brtest --list
+
+      - name: Physics (offline)
+        # A macOS runner cannot create an accelerated 4.1 core context, so CI
+        # runs `--offline`: every check that needs no GL context, and their
+        # negative controls. The harness decides which those are, in one place,
+        # so a new check cannot be silently left out here. It says loudly that
+        # the pixel checks were not run; tools/verify.sh runs them on a GPU at
+        # 320x180 and above.
+        run: ./build/brtest --offline
+
+      - name: Shaders (glslc)
+        # The shaders' half of what the runner cannot do through a driver: the
+        # same script tools/verify.sh runs, with glslc required rather than
+        # optional.
+        run: |
+          brew install shaderc
+          GLSLC_REQUIRED=1 tools/glslc.sh
+
       # Uploading is not only for the artefact. This repo has no package
       # manifest, so github-actions is its only Dependabot ecosystem — and a
       # bump to actions/upload-artifact otherwise touches release.yml alone,
