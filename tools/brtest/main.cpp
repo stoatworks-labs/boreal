@@ -730,6 +730,7 @@ struct Perturb
 	bool determinismSeeds   = false;///< --determinism expects two seeds to agree
 	bool onsetUnprimed      = false;///< --onset runs the analyser without its priming
 	bool defaultsShifted    = false;///< --defaults expects preset row 2 to be the defaults
+	bool quadrantsClip      = false;///< --quadrants: the march drops every footprint equatorward of the observer
 };
 
 using CheckFn = int ( * )( const Perturb& );
@@ -2052,6 +2053,104 @@ int runEngine( const Perturb& )
 	return 0;
 }
 
+
+//===========================================================================
+// --quadrants: the all-sky view has no half-sky cutoff that physics does not
+// put there.
+//===========================================================================
+int runQuadrants( const Perturb& perturb )
+{
+	std::printf( "\n=== quadrants: an all-sky view under the oval fills every quadrant; one beside it stops at the "
+	             "arcs' vanishing line\n" );
+	//Every curtain here is a sheet containing the field direction and magnetic
+	//east, so every one shares a single vanishing line: the great circle through
+	//the magnetic zenith and the east and west horizon. A curtain appears on the
+	//side of that line its footprint lies on relative to the observer's OWN
+	//field-aligned plane, whose footprint is 110 cot(dip) km equatorward. So:
+	// (a) arcs on both sides of that plane, one through it: all four quadrants;
+	// (b) arcs all poleward of it: nothing equatorward of the magnetic zenith.
+	const double dip     = 77.0;
+	const double ownKm   = -110.0 / std::tan( dip * kPi / 180.0 );
+	for( int size : { 257, 513 } )
+	{
+		for( int layout = 0; layout < 2; ++layout )
+		{
+			Rig rig;
+			if( !rig.Init( size, size ) )
+				return 1;
+			rig.plugin.SetClipSouthForTest( perturb.quadrantsClip );
+			rig.Set( PT_CAMERA, 1.0f );
+			rig.Set( PT_DETAIL, 3.0f );
+			rig.Set( PT_AIRGLOW, 0.0f );
+			rig.Set( PT_STARS, 0.0f );
+			rig.Set( PT_DIP, static_cast< float >( ( dip - 60.0 ) / 25.0 ) );
+			rig.Set( PT_ARCS, 3.0f );
+			rig.Set( PT_ARC_SPACING, inverseGeometric( 100.0, 15.0, 400.0 ) );
+			const double oval = layout == 0 ? ownKm - 100.0 : 30.0;//(a) -125, -25, 75 km; (b) 30, 130, 230 km
+			rig.Set( PT_OVAL_DISTANCE, static_cast< float >( ( oval + 600.0 ) / 2000.0 ) );
+			if( !rig.Render( 300 ) )
+				return 1;
+			const Floats img = rig.March();
+			const View& v    = rig.plugin.CurrentView();
+			float peak = 0.0f;
+			for( size_t i = 0; i < img.size(); i += 4 )
+				peak = std::max( peak, img[ i ] );
+			int lit[ 4 ] = { 0, 0, 0, 0 }, inside[ 4 ] = { 0, 0, 0, 0 };
+			double southmost = 0.0;//zenith angle of the lit pixel furthest south, near the meridian
+			//The vanishing line's plane: through the observer, containing magnetic
+			//east and the magnetic zenith. `side` > 0 is the poleward side.
+			const Vec3 east = { v.magEast[ 0 ], v.magEast[ 1 ], 0.0 };
+			const Vec3 up   = { -v.fieldDown[ 0 ], -v.fieldDown[ 1 ], -v.fieldDown[ 2 ] };
+			Vec3 normal     = { east.y * up.z - east.z * up.y, east.z * up.x - east.x * up.z, east.x * up.y - east.y * up.x };
+			if( dot( normal, { v.magPole[ 0 ], v.magPole[ 1 ], 0.0 } ) < 0.0 )
+				normal = scale( normal, -1.0 );
+			normal = normalise( normal );
+			double beyond = -90.0;//degrees past the vanishing line, equatorward, of the furthest lit pixel
+			for( int py = 0; py < size; ++py )
+				for( int px = 0; px < size; ++px )
+				{
+					bool valid;
+					const Vec3 d   = cameraRay( v, px, py, size, size, valid );
+					const double z = std::acos( std::clamp( d.z, -1.0, 1.0 ) ) * 180.0 / kPi;
+					if( !valid || z > 60.0 )
+						continue;
+					const int q = ( d.x >= 0 ? 1 : 0 ) + ( d.y >= 0 ? 2 : 0 );
+					++inside[ q ];
+					const bool on = img[ ( static_cast< size_t >( py ) * size + px ) * 4 ] > 0.01f * peak;
+					if( on )
+						++lit[ q ];
+					if( on && d.y < 0.0 && std::fabs( d.x ) < 0.05 )
+						southmost = std::max( southmost, z );
+					if( on )
+						beyond = std::max( beyond, -std::asin( std::clamp( dot( d, normal ), -1.0, 1.0 ) ) * 180.0 / kPi );
+				}
+			if( layout == 0 )
+			{
+				double least = 1.0;
+				for( int q = 0; q < 4; ++q )
+					least = std::min( least, static_cast< double >( lit[ q ] ) / std::max( inside[ q ], 1 ) );
+				Check( least >= 0.05,
+				       fmt( "%dx%d, arcs at %.0f, %.0f, %.0f km (one through the observer's field plane at %.0f km): "
+				            "the least-lit quadrant within 60 deg of the zenith is %.1f%% lit (at least 5%%); southmost "
+				            "on the meridian %.1f deg",
+				            size, size, oval, oval + 100, oval + 200, ownKm, 100.0 * least, southmost ) );
+			}
+			else
+			{
+				//Nothing can cross the vanishing line (it meets the meridian at the
+				//magnetic zenith, 90 - dip south of the zenith). Allow one fisheye
+				//pixel of the march's own sampling.
+				const double pixel = 90.0 / ( 0.5 * size );
+				Check( beyond <= pixel,
+				       fmt( "%dx%d, arcs at %.0f..%.0f km, all poleward of the observer's field plane: the lit pixel "
+				            "nearest the vanishing line is %.2f deg %s it (bound: %.2f deg past); the half sky is geometry",
+				            size, size, oval, oval + 200, std::fabs( beyond ), beyond > 0 ? "past" : "short of", pixel ) );
+			}
+		}
+	}
+	return Verdict();
+}
+
 const std::vector< CheckEntry >& checks()
 {
 	static const std::vector< CheckEntry > list = {
@@ -2060,7 +2159,7 @@ const std::vector< CheckEntry >& checks()
 		{ "colour", runColour },   { "corona", runCorona },         { "vanrhijn", runVanRhijn },
 		{ "extinction", runExtinction }, { "over-check", runOver }, { "determinism", runDeterminism },
 		{ "onset", runOnset },     { "defaults", runDefaults },     { "names", runNames },
-		{ "state", runState },     { "engine", runEngine },
+		{ "state", runState },     { "engine", runEngine },         { "quadrants", runQuadrants },
 	};
 	return list;
 }
@@ -2096,6 +2195,7 @@ int runNegative()
 	add( "over", runOver, "expect identity with the airglow on", []( Perturb& p ) { p.overAirglow = true; } );
 	add( "determinism", runDeterminism, "expect seeds 3 and 4 to agree", []( Perturb& p ) { p.determinismSeeds = true; } );
 	add( "onset", runOnset, "run the analyser unprimed", []( Perturb& p ) { p.onsetUnprimed = true; } );
+	add( "quadrants", runQuadrants, "drop every footprint equatorward of the observer (the half-sky defect)", []( Perturb& p ) { p.quadrantsClip = true; } );
 	add( "defaults", runDefaults, "expect preset row 2 to be the defaults", []( Perturb& p ) { p.defaultsShifted = true; } );
 
 	int unfalsifiable = 0;
