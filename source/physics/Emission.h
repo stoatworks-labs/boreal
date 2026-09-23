@@ -117,11 +117,11 @@ struct Volume
 	double e4278, e3914, e1P;  ///< prompt
 };
 
-/// The rates at every table height (kHeights of them, 80..500 km by 1 km).
+/// The rates at every table height (kHeights of them, 80..800 km by 1 km).
 /// The ionisation is Fang 2008 scaled so that the table conserves energy:
 /// sum over heights of q * 35 eV * 1 km = Q exactly (trapezoid). `rawFraction`
 /// receives what Fang's own profile integrated to before that, as a fraction
-/// of Q -- the part below 80 km, above 500 km, and the parameterisation's own
+/// of Q -- the part below 80 km, above 800 km, and the parameterisation's own
 /// few-percent fit error.
 std::vector< Volume > Profile( double activity, double e0KeV, double fluxErg, double* rawFraction = nullptr );
 
@@ -131,7 +131,7 @@ double TrapezoidWeight( int i );
 //---------------------------------------------------------------------------
 // The tables the GPU samples.
 //---------------------------------------------------------------------------
-constexpr int kHeights     = 421;  ///< 80..500 km every 1 km
+constexpr int kHeights     = 721;  ///< 80..800 km every 1 km
 constexpr int kEnergies    = 64;   ///< ln E0 from ln 0.1 to ln 30 keV
 constexpr double kLowKeV   = 0.1;
 constexpr double kHighKeV  = 30.0;
@@ -145,7 +145,7 @@ struct Tables
 
 	/// kHeights x kEnergies x 4, height fastest: normalised per km vertical
 	/// shapes of (O(1S) population, O(1D) population, N2+ 1N emission, N2 1P
-	/// emission). Each integrates to 1 over 80-500 km.
+	/// emission). Each integrates to 1 over 80-800 km.
 	std::vector< float > shape;
 
 	/// kEnergies x 4: O(1S) effective production column per erg, its
@@ -154,7 +154,7 @@ struct Tables
 	std::vector< float > column;
 
 	/// kEnergies x 4: 427.8, 391.4 and 1P column photons per erg; the fraction
-	/// of Fang's deposition that fell inside 80..500 km before normalising.
+	/// of Fang's deposition that fell inside 80..800 km before normalising.
 	std::vector< float > prompt;
 };
 

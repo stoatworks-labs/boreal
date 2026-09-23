@@ -1174,7 +1174,7 @@ int runDeposition( const Perturb& perturb )
 			deposited += rows[ i ].ionisation * emission::TrapezoidWeight( i ) * 1e5 * emission::kIonPairKeV / emission::kKeVPerErg;
 		Check( std::fabs( deposited - 1.0 ) <= 1e-12 && std::fabs( raw - 1.0 ) <= 0.05,
 		       fmt( "E0 = %4.1f keV: the table deposits %.14f of Q (bound 1e-12); Fang's own profile put %.4f of it in "
-		            "80-500 km (bound 5%%: the paper's stated accuracy)",
+		            "80-800 km (bound 5%%: the paper's stated accuracy)",
 		            e0, deposited, raw ) );
 	}
 	return Verdict();

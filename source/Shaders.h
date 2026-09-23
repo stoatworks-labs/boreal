@@ -20,7 +20,7 @@
       3. occupancy the column emission of every map texel, kR, mipmapped: the
                    march's empty-space test and the upsample's guide
       4. march     one ray per pixel of a Detail-sized buffer through the
-                   80-500 km shell; four channels of kR
+                   80-800 km shell; four channels of kR
       5. allsky    the same march on a 32x32 all-sky grid, cosine-weighted, for
                    the Over effect's Illumination
       6. composite upsample, extinction, colour, observer, stars, horizon, clip

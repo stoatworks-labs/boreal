@@ -1,0 +1,42 @@
+# Boreal demo reel: 30 s at 60 fps, 1280x720.
+#
+#   build/brtest --film 1800 --size 1280x720 --script docs/demo.cues \
+#     | ffmpeg -f rawvideo -pix_fmt rgba -s 1280x720 -r 60 -i - -c:v libx264 -pix_fmt yuv420p -crf 18 docs/demo.mp4
+#
+# Tracks are held before their first key and interpolated between keys, so a
+# button press is three keys (0, 1, 0).
+
+# The defaults, a little faster than real time.
+0     Speed            0.625
+# A substorm at 4 s: the sheet strength jumps, the poleward arc brightens and surges west.
+239   Substorm         0
+240   Substorm         1
+241   Substorm         0
+# Swing up under the arcs to the magnetic zenith (south, 77 degrees up).
+600   Look Elevation   0.35
+600   Look Azimuth     0.5
+600   Oval Distance    0.425
+600   Field of View    0.5556
+900   Look Elevation   0.87
+900   Look Azimuth     1.0
+900   Oval Distance    0.3
+900   Field of View    0.78
+# The whole sky, as an all-sky camera records it.
+1080  Camera           0
+1081  Camera           1
+# Solar maximum, softer electrons: the red line rises and lingers.
+1200  Activity         0.4
+1200  Energy           0.588
+1440  Activity         1.0
+1440  Energy           0.25
+# Back to a rectilinear view, then the same sky as the dark-adapted eye sees it.
+1500  Camera           1
+1501  Camera           0
+1500  Look Elevation   0.87
+1501  Look Elevation   0.35
+1500  Look Azimuth     1.0
+1501  Look Azimuth     0.5
+1500  Field of View    0.78
+1501  Field of View    0.5556
+1650  Observer         0
+1651  Observer         1

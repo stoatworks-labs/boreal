@@ -12,7 +12,7 @@ const char* const kCommon = R"(
 const float R_EARTH  = 6371.0;  //km
 const float H_REF    = 110.0;   //km: the footprint plane, where the sheet lives
 const float H_BOTTOM = 80.0;
-const float H_TOP    = 500.0;
+const float H_TOP    = 800.0;
 const float PI       = 3.14159265358979;
 
 //= mirrored in engine/Sheet.cpp, PcgHash(). Integer only: the same on every GPU.
@@ -408,7 +408,7 @@ const char* const kMarchLibrary = R"(
 uniform sampler2D State;     //unit 0
 uniform sampler2D Production;//unit 1
 uniform sampler2D Occupancy; //unit 2, mipmapped
-uniform sampler2D Shapes;    //unit 3: x = height 80..500 km, y = ln E0
+uniform sampler2D Shapes;    //unit 3: x = height 80..800 km, y = ln E0
 uniform sampler2D Columns;   //unit 4
 uniform float MapA;
 uniform float MapS;
@@ -449,7 +449,7 @@ float lnCoord( float lnE )
 
 vec4 shapeAt( float h, float lnE )
 {
-	return texture( Shapes, vec2( ( h - H_BOTTOM + 0.5 ) / 421.0, lnCoord( lnE ) ) );
+	return texture( Shapes, vec2( ( h - H_BOTTOM + 0.5 ) / ( H_TOP - H_BOTTOM + 1.0 ), lnCoord( lnE ) ) );
 }
 
 //The 557.7 nm airglow layer: a Gaussian in altitude, integrated along the
@@ -855,7 +855,13 @@ void main()
 
 	if( IsEffect == 0 )
 	{
-		float alpha = valid ? 1.0 : 0.0;
+		//Outside an all-sky camera's circle there is no sky and no ground.
+		if( !valid )
+		{
+			fragColor = vec4( 0.0 );
+			return;
+		}
+		float alpha = 1.0;
 		float el    = 90.0 - zenith;
 		float az    = degrees( atan( d.x, d.y ) );
 		bool ground = ( HorizonKind == 1 && el < 0.0 ) || ( HorizonKind == 2 && el < hills( az < 0.0 ? az + 360.0 : az ) );

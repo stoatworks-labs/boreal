@@ -1,7 +1,7 @@
 #pragma once
 
 /**
-    The neutral atmosphere, 80-500 km.
+    The neutral atmosphere, 80-800 km.
 
     A baked NRLMSIS 2.1 table (AtmosphereTable.cpp; provenance in its header
     and in AGENTS.md), at two levels of solar activity, 2 km apart. Activity
@@ -39,7 +39,7 @@ struct Air
 
 constexpr double kEarthRadiusKm = 6371.0;
 constexpr double kBottomKm      = 80.0;
-constexpr double kTopKm         = 500.0;
+constexpr double kTopKm         = 800.0;
 
 /// The air at `km`, for activity 0 (solar minimum) .. 1 (solar maximum).
 Air At( double km, double activity );

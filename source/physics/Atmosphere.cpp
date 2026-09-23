@@ -46,8 +46,10 @@ Air At( double km, double activity )
 	air.rho = r.rho;
 
 	//The MSIS mass density includes the minor species; the mean molecular
-	//mass is taken from it over the three majors, which carry >99% of the
-	//number below 500 km.
+	//mass is taken from it over the three majors. Below ~500 km they carry
+	//>99% of the number; above, helium grows (at solar minimum it rivals O by
+	//800 km) and this overstates the mass. It enters only Fang's scale height,
+	//up where no precipitation in the table deposits anything that matters.
 	const double n    = r.n2 + r.o2 + r.o;
 	const double mass = r.rho / std::max( n, 1e-300 );
 	const double g    = kGravity0 * std::pow( kEarthRadiusKm / ( kEarthRadiusKm + km ), 2.0 );
