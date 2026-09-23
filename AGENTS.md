@@ -422,8 +422,8 @@ Assumed, or not done:
 - **The factorisation** (footprint × one shape per line) is exact only in
   steady state.
 - **Transport of the red population** (wind, diffusion) is not checked.
-- **Cost**: at the default Detail the frame is ~8–12 ms at 1080p on this Mac
-  (shared with other builds while measured), ~30 ms at 4K — use Quarter at 4K.
+- **Cost**: at the default Detail the median frame is 6–12 ms at 1080p on this Mac
+  (shared with other builds while measured), 15–32 ms at 4K — use Quarter at 4K.
   At the node cap an RK4 step is 14 ms, which the render waits for about once
   every 12 frames at 4×.
 - **The GPU-less CI runner** has never run the harness; CI only builds.

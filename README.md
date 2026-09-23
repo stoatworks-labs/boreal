@@ -134,10 +134,10 @@ What is measured, on this machine:
 | dead controls | **39** parameters over both plugins, all live |
 
 Render cost (`brtest --bench`, the defaults, Detail Half, the median frame):
-**~6–9 ms at 720p, ~8–12 ms at 1080p, ~20–32 ms at 4K** — the spread is
+**4.4–9 ms at 720p, 6–12 ms at 1080p, 15–32 ms at 4K** — the spread is
 between runs on a machine shared with other builds. Use Detail Quarter at 4K.
-The vortex sheet costs **0.4 ms** per RK4 step at 512 nodes, **3.8 ms** at 2048
-and **14 ms** at the 4096-node cap (four threads); a step is 0.8 s of sky time
+The vortex sheet costs **0.4 ms** per RK4 step at 512 nodes, **3.8–4.1 ms** at 2048
+and **13–15 ms** at the 4096-node cap (four threads); a step is 0.8 s of sky time
 at the defaults, so at 4× one frame in twelve waits for it.
 
 What is **not** verified, and is the honest limit of this release:
