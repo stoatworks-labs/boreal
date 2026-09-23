@@ -210,7 +210,7 @@ void main()
 const char* const kSplatVertex = R"(
 layout( location = 0 ) in vec4 Ends;  //A.east, A.pole, B.east, B.pole: km
 layout( location = 1 ) in vec4 Values;//flux A, flux B, ln E0 A, ln E0 B
-layout( location = 2 ) in vec3 Extra; //label A, label B, corner 0..5
+layout( location = 2 ) in vec3 Extra; //label A, label B (unused here), corner 0..5
 
 uniform float MapA;
 uniform float MapS;
@@ -219,7 +219,6 @@ uniform float Thickness;//km, 1 sigma
 
 out vec4 vEnds;
 out vec4 vValues;
-out vec2 vLabels;
 
 void main()
 {
@@ -243,14 +242,12 @@ void main()
 	gl_Position = vec4( toMap2( p, MapA, MapS ) * 2.0 - 1.0, 0.0, 1.0 );
 	vEnds       = Ends;
 	vValues     = Values;
-	vLabels     = Extra.xy;
 }
 )";
 
 const char* const kSplatFragment = R"(
 in vec4 vEnds;
 in vec4 vValues;
-in vec2 vLabels;
 
 uniform float MapA;
 uniform float MapS;
@@ -258,10 +255,6 @@ uniform float MapSize;
 uniform float Thickness;
 uniform float FluxScale;//erg cm^-2 s^-1 at the base sheet strength
 uniform float LnEnergy; //ln of the base E0, keV
-uniform float Rays;     //0..1
-uniform float RayK[ 8 ];    //1/km
-uniform float RayAmp[ 8 ];
-uniform float RayPhase[ 8 ];//reduced on the CPU in double: never a raw clock in float
 
 out vec4 fragColor;
 
@@ -284,16 +277,6 @@ void main()
 	float texel = max( texelKm( p.x, MapA, MapS, MapSize ), texelKm( p.y, MapA, MapS, MapSize ) );
 	float w2    = Thickness * Thickness + 0.25 * texel * texel;
 	float flux  = FluxScale * mix( vValues.x, vValues.y, t ) * ( Thickness / sqrt( w2 ) ) * exp( -0.5 * d2 / w2 );
-
-	//Rays: the one stochastic texture in the plugin. A seeded spectrum of
-	//field-aligned filaments along the sheet (Alfvenic filamentation), carried
-	//on the Lagrangian label so the rays travel with the sheet. The mean of the
-	//modulation is 1 whatever Rays is, so it moves light and makes none.
-	float label = mix( vLabels.x, vLabels.y, t );
-	float s     = 0.0;
-	for( int k = 0; k < 8; ++k )
-		s += RayAmp[ k ] * cos( RayK[ k ] * label + RayPhase[ k ] );
-	flux *= ( 1.0 - Rays ) + Rays * s * s;
 
 	float lnE = LnEnergy + mix( vValues.z, vValues.w, t );
 	fragColor = vec4( flux, flux * lnE, 0.0, 0.0 );
@@ -426,6 +409,41 @@ uniform float AirglowKm;
 uniform float AirglowSigma;
 uniform int MaxSteps;
 uniform vec4 ChannelMask;  //1s; the harness isolates one line with it
+uniform int ClipSouthForTest;//0; 1 drops every footprint equatorward of the observer (--quadrants' wrong model)
+
+//Rays: the one stochastic texture in the plugin. A seeded spectrum of
+//field-aligned filaments (Alfvenic filamentation, which the model does not
+//resolve), a function of the footprint's magnetic-east coordinate -- so each
+//filament IS a field line -- evaluated here at the march's own resolution
+//rather than baked into the footprint map, whose texel is ~2 km at an arc's
+//usual distance. The phases carry the convection (reduced in double on the
+//CPU). The mean of the modulation is 1 whatever Rays is: it moves light and
+//makes none. It applies to the prompt lines and the green, not to the red,
+//whose minutes-long population smears any filament out.
+uniform float Rays;
+uniform float RayK[ 8 ];   //1/km
+uniform float RayAmp[ 8 ];
+uniform float RayPhase[ 8 ];
+
+//Averaged over the footprint span `width` (km of east) one sample stands
+//for: each term is attenuated by its box filter, sinc( k w / 2 ), and the
+//variance it loses is put back as a constant -- so a step coarser than a
+//filament neither aliases it into blobs nor changes the mean. Seen along the
+//arc the rays smear, as they do; seen across it they are sharp.
+float rayModulation( float east, float width )
+{
+	if( Rays <= 0.0 )
+		return 1.0;
+	float s = 0.0, lost = 0.0;
+	for( int k = 0; k < 8; ++k )
+	{
+		float x    = 0.5 * RayK[ k ] * width;
+		float keep = x > 1e-3 ? sin( x ) / x : 1.0;
+		s += keep * RayAmp[ k ] * cos( RayK[ k ] * east + RayPhase[ k ] );
+		lost += 0.5 * RayAmp[ k ] * RayAmp[ k ] * ( 1.0 - keep * keep );
+	}
+	return ( 1.0 - Rays ) + Rays * ( s * s + lost );
+}
 
 //The colour of each spectral component: XYZ in cd m^-2 per kR (683 lm/W
 //times the CMFs times the radiance of a kR), the scotopic luminance per kR,
@@ -483,18 +501,18 @@ bool insideMap( vec2 tc )
 	return all( greaterThanEqual( tc, vec2( 0.0 ) ) ) && all( lessThanEqual( tc, vec2( 1.0 ) ) );
 }
 
-vec2 mapAt( float t, vec3 d )
+vec2 footAt( float t, vec3 d )
 {
-	float h = altitudeAlong( t, d.z );
-	return toMap2( footprint( t * d, h, FieldDown, MagEast, MagPole ), MapA, MapS );
+	return footprint( t * d, altitudeAlong( t, d.z ), FieldDown, MagEast, MagPole );
 }
 
 //Emission at one point, photons cm^-2 s^-1 per km of path, per channel.
-vec4 emissionAt( float t, vec3 d )
+vec4 emissionAt( float t, vec3 d, float eastSpan )
 {
-	float h = altitudeAlong( t, d.z );
-	vec2 tc = toMap2( footprint( t * d, h, FieldDown, MagEast, MagPole ), MapA, MapS );
-	if( !insideMap( tc ) )
+	float h   = altitudeAlong( t, d.z );
+	vec2 foot = footprint( t * d, h, FieldDown, MagEast, MagPole );
+	vec2 tc   = toMap2( foot, MapA, MapS );
+	if( !insideMap( tc ) || ( ClipSouthForTest == 1 && foot.y < 0.0 ) )
 		return vec4( 0.0 );
 	vec4 st   = texture( State, tc );
 	vec2 pr   = texture( Production, tc ).rg;
@@ -511,7 +529,8 @@ vec4 emissionAt( float t, vec3 d )
 		e.z    = pr.r * pc.x * s.z;
 		e.w    = pr.r * pc.z * s.w;
 	}
-	return e;
+	float m = rayModulation( foot.x, eastSpan );
+	return vec4( e.x * m, e.y, e.z * m, e.w * m );
 }
 
 //The four channels' columns along a ray, kR, before extinction.
@@ -529,9 +548,11 @@ vec4 marchRay( vec3 d )
 	while( t < tEnd && budget > 0 )
 	{
 		float span = min( WINDOW, tEnd - t );
-		vec2 f0    = mapAt( t, d );
-		vec2 f1    = mapAt( t + span, d );
-		vec2 fm    = mapAt( t + 0.5 * span, d );
+		vec2 k0    = footAt( t, d );
+		vec2 k1    = footAt( t + span, d );
+		vec2 f0    = toMap2( k0, MapA, MapS );
+		vec2 f1    = toMap2( k1, MapA, MapS );
+		vec2 fm    = toMap2( footAt( t + 0.5 * span, d ), MapA, MapS );
 		budget -= 1;
 
 		//Empty-space skipping: the mean of a mip level is zero exactly where
@@ -557,8 +578,9 @@ vec4 marchRay( vec3 d )
 		int n       = int( ceil( span / max( step, span / 96.0 ) ) );
 		n           = min( n, max( budget, 1 ) );
 		float dt    = span / float( n );
+		float east  = abs( k1.x - k0.x ) / float( n );//km of footprint east per sample
 		for( int i = 0; i < n; ++i )
-			photons += emissionAt( t + ( float( i ) + 0.5 ) * dt, d ) * dt;
+			photons += emissionAt( t + ( float( i ) + 0.5 ) * dt, d, east ) * dt;
 		budget -= n;
 		t += span;
 	}

@@ -50,6 +50,7 @@ constexpr double kSiderealDay    = 86164.0905;
 constexpr float kDisplayScale    = 250.0f;///< display units per cd m^-2 at 0 stops
 constexpr float kOccThreshold    = 1e-5f; ///< kR: 0.01 R, far under anything visible
 constexpr int kMaxMarchSteps     = 400;
+constexpr double kRayShortest    = 0.5;///< km
 /// O diffusion near the red line's height, km^2/s: the order of the molecular
 /// diffusion coefficient of O at ~250 km (ASSUMED, not from a table).
 constexpr float kRedDiffusion = 0.5f;
@@ -444,32 +445,6 @@ void BorealPlugin::splat( const engine::Snapshot& snap )
 	splatShader.Set( "Thickness", ThicknessFromParam( Effective( PT_THICKNESS ) ) );
 	splatShader.Set( "FluxScale", flux * audioFlux );
 	splatShader.Set( "LnEnergy", std::log( EnergyFromParam( Effective( PT_ENERGY ) ) ) );
-	splatShader.Set( "Rays", RaysFromParam( Effective( PT_RAYS ) ) );
-
-	//The ray spectrum: seeded wavelengths of 1.5 to 10 km, amplitudes
-	//normalised so the mean of s^2 is 1, drifting phases reduced in double.
-	float rayK[ shaders::kRayTerms ], rayAmp[ shaders::kRayTerms ], rayPhase[ shaders::kRayTerms ];
-	const uint32_t seed = SeedFromParam( params[ PT_SEED ] ) * 7919u + 17u;
-	double norm         = 0.0;
-	for( int k = 0; k < shaders::kRayTerms; ++k )
-	{
-		const auto h = [ & ]( uint32_t salt ) { return engine::PcgHash( seed + static_cast< uint32_t >( k ) * 131u + salt ) / 4294967296.0; };
-		const double lambda = 1.5 * std::pow( 2.0, 2.75 * ( k + h( 1 ) ) / shaders::kRayTerms );
-		const double omega  = 2.0 * kPi * ( 0.01 + 0.05 * h( 2 ) ) * ( h( 3 ) < 0.5 ? -1.0 : 1.0 );
-		double phase        = 2.0 * kPi * h( 4 ) + omega * skyTime;
-		phase -= 2.0 * kPi * std::floor( phase / ( 2.0 * kPi ) );
-		rayK[ k ]     = static_cast< float >( 2.0 * kPi / lambda );
-		rayAmp[ k ]   = static_cast< float >( 0.3 + h( 5 ) );
-		rayPhase[ k ] = static_cast< float >( phase );
-		norm += rayAmp[ k ] * rayAmp[ k ];
-	}
-	for( float& amp : rayAmp )
-		amp *= static_cast< float >( std::sqrt( 2.0 / norm ) );
-	const GLuint program = splatShader.GetGLID();
-	glUniform1fv( glGetUniformLocation( program, "RayK" ), shaders::kRayTerms, rayK );
-	glUniform1fv( glGetUniformLocation( program, "RayAmp" ), shaders::kRayTerms, rayAmp );
-	glUniform1fv( glGetUniformLocation( program, "RayPhase" ), shaders::kRayTerms, rayPhase );
-
 	setAdditiveBlend();
 	glBindVertexArray( splatVAO );
 	glBindBuffer( GL_ARRAY_BUFFER, splatVBO );
@@ -512,6 +487,41 @@ void BorealPlugin::setMarchUniforms( FFGLShader& shader )
 	shader.Set( "AirglowSigma", static_cast< float >( optics::kAirglowSigma ) );
 	shader.Set( "MaxSteps", kMaxMarchSteps );
 	shader.Set( "ChannelMask", channelMask[ 0 ], channelMask[ 1 ], channelMask[ 2 ], channelMask[ 3 ] );
+	shader.Set( "ClipSouthForTest", clipSouth ? 1 : 0 );
+
+	//The ray spectrum: seeded wavelengths from 0.5 to 5 km (a filament a few
+	//hundred metres across is the order of the thinnest rays photographed),
+	//amplitudes normalised so the mean of s^2 is 1; the phases drift at
+	//0.01-0.06 Hz and ride the convection, reduced in double.
+	{
+		float rayK[ shaders::kRayTerms ], rayAmp[ shaders::kRayTerms ], rayPhase[ shaders::kRayTerms ];
+		const uint32_t seed = SeedFromParam( params[ PT_SEED ] ) * 7919u + 17u;
+		const double drift  = DriftFromParam( Effective( PT_DRIFT ) );
+		double norm         = 0.0;
+		for( int k = 0; k < shaders::kRayTerms; ++k )
+		{
+			const auto h = [ & ]( uint32_t salt ) {
+				return engine::PcgHash( seed + static_cast< uint32_t >( k ) * 131u + salt ) / 4294967296.0;
+			};
+			const double lambda = kRayShortest * std::pow( 10.0, ( k + h( 1 ) ) / shaders::kRayTerms );
+			const double wave   = 2.0 * kPi / lambda;
+			const double omega  = 2.0 * kPi * ( 0.01 + 0.05 * h( 2 ) ) * ( h( 3 ) < 0.5 ? -1.0 : 1.0 );
+			double phase        = 2.0 * kPi * h( 4 ) + omega * skyTime - wave * std::fmod( drift * skyTime, lambda );
+			phase -= 2.0 * kPi * std::floor( phase / ( 2.0 * kPi ) );
+			rayK[ k ]     = static_cast< float >( wave );
+			//Longer filaments carry more: amplitude ~ sqrt( lambda ).
+			rayAmp[ k ]   = static_cast< float >( std::sqrt( lambda ) * ( 0.5 + h( 5 ) ) );
+			rayPhase[ k ] = static_cast< float >( phase );
+			norm += rayAmp[ k ] * rayAmp[ k ];
+		}
+		for( float& amp : rayAmp )
+			amp *= static_cast< float >( std::sqrt( 2.0 / norm ) );
+		const GLuint program = shader.GetGLID();
+		glUniform1fv( glGetUniformLocation( program, "RayK" ), shaders::kRayTerms, rayK );
+		glUniform1fv( glGetUniformLocation( program, "RayAmp" ), shaders::kRayTerms, rayAmp );
+		glUniform1fv( glGetUniformLocation( program, "RayPhase" ), shaders::kRayTerms, rayPhase );
+		shader.Set( "Rays", RaysFromParam( Effective( PT_RAYS ) ) );
+	}
 
 	float xyz[ optics::kComponents * 3 ], scot[ optics::kComponents ], nm[ optics::kComponents ];
 	int channel[ optics::kComponents ];

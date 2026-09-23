@@ -80,6 +80,12 @@ public:
 	void FreezeNodesForTest( const std::vector< engine::Node >& nodes, const std::vector< int >& arcStart );
 	void SetChannelMaskForTest( float g, float r, float b, float p );
 	void SetOutputXYZForTest( bool xyz );
+	/// Drop every footprint equatorward of the observer in the march: the
+	/// half-sky defect --quadrants must see, as a deliberately wrong model.
+	void SetClipSouthForTest( bool on )
+	{
+		clipSouth = on;
+	}
 	/// Keep the analyser deaf on its first frame too (--onset's negative control).
 	void SetUnprimedForTest( bool unprimed );
 	/// The red population's small diffusion, off, so --lifetime sees decay alone.
@@ -193,6 +199,7 @@ private:
 	float channelMask[ 4 ] = { 1, 1, 1, 1 };
 	bool outputXYZ         = false;
 	bool diffusion         = true;
+	bool clipSouth         = false;
 };
 
 } // namespace boreal
