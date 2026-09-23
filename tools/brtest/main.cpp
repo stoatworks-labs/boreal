@@ -1853,16 +1853,17 @@ int runOnset( const Perturb& perturb )
 	rig.Render( 150 );//2.5 s of beats
 	const unsigned long long before = rig.plugin.SubstormsFired();
 
-	//The trigger: the host's clock goes back to 0.35 s into a beat's decay,
-	//with the music still playing. The next hit is at 0.5 s: 9 frames later.
-	rig.clockOffset = 0.35 - static_cast< double >( rig.frame ) / rig.fps;
+	//The trigger: the host's clock goes back to 0.02 s -- just after a hit,
+	//with the music still loud, which is the case that deafened the fleet's
+	//unprimed analysers. The next hit is at 0.5 s: 29 frames later.
+	rig.clockOffset = 0.02 - static_cast< double >( rig.frame ) / rig.fps;
 	rig.Render( 1 );
 	const unsigned long long atTrigger = rig.plugin.SubstormsFired();
-	rig.Render( 20 );
+	rig.Render( 35 );
 	const unsigned long long after = rig.plugin.SubstormsFired();
 	Check( before >= 3, fmt( "before the trigger: %llu substorms from 5 beats", before ) );
 	Check( atTrigger == before && after == atTrigger + 1,
-	       fmt( "after the trigger: %llu on the trigger frame, %llu in the next 20 frames (one hit at 0.5 s)",
+	       fmt( "after the trigger: %llu on the trigger frame, %llu in the next 35 frames (one hit, at 0.5 s)",
 	            atTrigger - before, after - atTrigger ) );
 	return Verdict();
 }
@@ -2217,24 +2218,6 @@ int main( int argc, char** argv )
 
 	if( ran )
 		;
-	else if( mode == "debug-shapes" )
-	{
-		Rig rig;
-		rig.Init( 320, 180 );
-		rig.Render( 1 );
-		GLint w = 0, h = 0, f = 0;
-		glBindTexture( GL_TEXTURE_2D, rig.plugin.ShapeTextureID() );
-		glGetTexLevelParameteriv( GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w );
-		glGetTexLevelParameteriv( GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h );
-		glGetTexLevelParameteriv( GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &f );
-		GLint minf = 0; glGetTexParameteriv( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, &minf );
-		std::printf( "shape %d x %d fmt %x min %x\n", w, h, f, minf );
-		glBindTexture( GL_TEXTURE_2D, rig.plugin.ColumnTextureID() );
-		glGetTexLevelParameteriv( GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w );
-		glGetTexLevelParameteriv( GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h );
-		glGetTexParameteriv( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, &minf );
-		std::printf( "column %d x %d min %x\n", w, h, minf );
-	}
 	else if( mode == "pipe" )
 		result = runPipe( effect, width, height, scriptPath, filmFrames, beat, settings );
 	else if( mode == "negative" )
