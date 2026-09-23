@@ -131,7 +131,7 @@ BorealPlugin::BorealPlugin( bool effect ) : isEffect( effect )
 	standard( PT_ENERGY, "Energy" );
 	standard( PT_FLUX, "Flux" );
 	standard( PT_KNIGHT, "Knight" );
-	standard( PT_THICKNESS, "Curtain Thickness" );
+	standard( PT_THICKNESS, "Thickness" );//"Curtain Thickness" is 17: past FFGL's 16
 	standard( PT_RAYS, "Rays" );
 
 	standard( PT_ACTIVITY, "Activity" );

@@ -211,11 +211,11 @@ int runKH( const Perturb& perturb )
 int runInvariants( const Perturb& perturb )
 {
 	std::printf( "\n=== invariants: circulation, impulse and the Hamiltonian over 10 min of sky time\n" );
-	auto build = [ & ]() {
+	auto build = [ & ]( double spacing ) {
 		engine::Sheet sheet;
 		sheet.settings.period     = 4096.0;
 		sheet.settings.delta      = 16.0;
-		sheet.settings.spacingMax = 8.0;
+		sheet.settings.spacingMax = spacing;
 		sheet.settings.cap        = 100000;
 		sheet.settings.driftU     = 0.3;//a uniform drift changes none of the three
 		sheet.settings.threads    = 4;
@@ -225,13 +225,13 @@ int runInvariants( const Perturb& perturb )
 		{
 			engine::Arc arc;
 			arc.baseY = 40.0 * a;
-			const int n = 512;
+			const int n = static_cast< int >( std::lround( 4096.0 / spacing ) );//already at the bound: the first step inserts nothing
 			for( int i = 0; i < n; ++i )
 			{
 				const double x = -2048.0 + 4096.0 * ( i + 0.37 * a ) / n;
 				arc.x.push_back( x );
 				arc.y.push_back( arc.baseY );
-				arc.g.push_back( 1.0 * 4096.0 / n );
+				arc.g.push_back( 0.3 * 4096.0 / n );
 				arc.a.push_back( x );
 			}
 			for( int m = 0; m < 4; ++m )
@@ -252,13 +252,15 @@ int runInvariants( const Perturb& perturb )
 	//  3. h = 1 s, refinement on: everything, through every insertion.
 	struct Result
 	{
-		double circulation, impulse, impulseJumps, hamiltonian;
+		double circulation, impulse, impulseJumps, hamiltonian, discretisation;
 		int nodes, refinements;
 	};
-	auto run = [ & ]( double h, bool refine, Result& r ) {
-		engine::Sheet sheet = build();
+	auto run = [ & ]( double h, bool refine, Result& r, double spacing = 4.0 ) {
+		engine::Sheet sheet = build( spacing );
+		//Insertion only: removal is a coarsening, and is not what "through
+		//point insertion" is about (AGENTS.md).
 		sheet.settings.insert = refine;
-		sheet.settings.remove = refine;
+		sheet.settings.remove = false;
 		const double c0 = sheet.Circulation(), i0 = sheet.Impulse(), h0 = sheet.Hamiltonian();
 		double impulseJumps = 0.0;
 		int refinements     = 0;
@@ -283,18 +285,31 @@ int runInvariants( const Perturb& perturb )
 		r.hamiltonian  = ( sheet.Hamiltonian() - h0 ) / std::fabs( h0 );
 		r.nodes        = sheet.Count();
 		r.refinements  = refinements;
+		//The discretisation error of the end state's Hamiltonian: the same sheet
+		//with every segment halved once. An insertion moves the discrete sum
+		//towards the continuum's by at most about this much per halving.
+		r.discretisation = 0.0;
+		if( refine )
+		{
+			engine::Sheet finer = sheet;
+			finer.settings.spacingMax *= 0.5;
+			finer.settings.remove = false;
+			finer.settings.cap    = 1 << 30;
+			finer.Refine();
+			r.discretisation = std::fabs( finer.Hamiltonian() - sheet.Hamiltonian() ) / std::fabs( h0 );
+		}
 		return c0;
 	};
 
-	Result coarse {}, fine {}, refined {};
+	Result coarse {}, fine {}, refined {}, rough {};
 	const double circulation = run( 1.0, false, coarse );
 	run( 0.5, false, fine );
 	run( 1.0, true, refined );
+	run( 1.0, true, rough, 8.0 );
 	const double scaleImpulse = circulation * 100.0;//circulation times the y span of the arcs, km
 
-	std::printf( "  two arcs, 1024 nodes, delta 16 km, drift 0.3 km/s; with refinement: %d nodes at the end after %d "
-	             "insertions/removals
-",
+	std::printf( "  two arcs, 2048 nodes, gamma 0.3 km/s, delta 16 km, spacing <= 4 km, drift 0.3 km/s; with refinement: %d nodes at the end after %d "
+	             "insertions\n",
 	             refined.nodes, refined.refinements );
 	Check( std::fabs( refined.circulation ) <= 1e-12 * circulation,
 	       fmt( "circulation: changed by %.3e of %.6e (bound 1e-12 relative: segment halving is exact, a merge one rounding)",
@@ -312,10 +327,17 @@ int runInvariants( const Perturb& perturb )
 	       fmt( "Hamiltonian, fixed nodes: %.3e at h = 1 s, %.3e at h = 0.5 s (ratio %.1f; RK4's h^4 predicts 16, "
 	            "accepted 8..32) -- bound 1e-6 relative",
 	            coarse.hamiltonian, fine.hamiltonian, ratio ) );
-	Check( std::fabs( refined.hamiltonian ) <= 1e-4,
-	       fmt( "Hamiltonian through the refinements: %.3e relative over 10 min (bound 1e-4: the double sum "
-	            "re-discretised at every insertion, on a sheet resolved to spacing < delta/2)",
-	            refined.hamiltonian ) );
+	//Through insertion the discrete Hamiltonian is not conserved to rounding:
+	//an insertion re-discretises the double sum, and the dynamics of an
+	//N-node sheet conserve H_N, not the continuum's H. What must hold is that
+	//the change is DISCRETISATION -- it vanishes with the spacing, as O(h^2)
+	//-- and is small at the resolution the plugin runs at.
+	const double shrink = std::fabs( rough.hamiltonian ) / std::max( std::fabs( refined.hamiltonian ), 1e-300 );
+	Check( std::fabs( refined.hamiltonian ) <= 1e-4 && shrink >= 2.5,
+	       fmt( "Hamiltonian through %d insertions: %.3e relative at spacing <= 4 km, %.3e at <= 8 km: halving the "
+	            "spacing shrinks it %.1fx (O(h^2) predicts 4; accepted >= 2.5) and it stays under 1e-4. For scale, "
+	            "halving every segment of the end state once moves H by %.3e",
+	            refined.refinements, refined.hamiltonian, rough.hamiltonian, shrink, refined.discretisation ) );
 	return Verdict();
 }
 

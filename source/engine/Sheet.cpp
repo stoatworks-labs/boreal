@@ -255,13 +255,28 @@ int Sheet::Refine()
 				continue;
 			}
 
-			//Catmull-Rom through the four nodes around the gap, at its middle:
-			//the Lagrangian midpoint, to third order in the node parameter.
+			//A cubic through the four nodes around the gap, in the Lagrangian
+			//coordinate (circulation), evaluated at the gap's circulation
+			//midpoint. The coordinate is NOT uniform -- a segment halved earlier
+			//carries half its neighbour's circulation -- and a uniform-parameter
+			//(Catmull-Rom) cubic is only first-order accurate across such a
+			//step; this one is fourth-order whatever the spacing.
 			double xm, ym, x2, y2;
 			node( static_cast< long >( i ) - 1, xm, ym );
 			node( static_cast< long >( i ) + 2, x2, y2 );
-			const double px = ( -xm + 9.0 * x0 + 9.0 * x1 - x2 ) / 16.0;
-			const double py = ( -ym + 9.0 * y0 + 9.0 * y1 - y2 ) / 16.0;
+			const double gPrev = arc.g[ ( i + n - 1 ) % n ], gHere = arc.g[ i ], gNext = arc.g[ ( i + 1 ) % n ];
+			const double s[ 4 ] = { -gPrev, 0.0, gHere, gHere + gNext };
+			const double at     = 0.5 * gHere;
+			double w[ 4 ];
+			for( int a = 0; a < 4; ++a )
+			{
+				w[ a ] = 1.0;
+				for( int b = 0; b < 4; ++b )
+					if( b != a )
+						w[ a ] *= ( at - s[ b ] ) / ( s[ a ] - s[ b ] );
+			}
+			const double px = w[ 0 ] * xm + w[ 1 ] * x0 + w[ 2 ] * x1 + w[ 3 ] * x2;
+			const double py = w[ 0 ] * ym + w[ 1 ] * y0 + w[ 2 ] * y1 + w[ 3 ] * y2;
 
 			const double half = 0.5 * arc.g[ i ];//exact
 			ng.push_back( half );
@@ -320,7 +335,11 @@ double Sheet::Hamiltonian() const
 			const double d = std::cosh( k * ( y[ i ] - y[ j ] ) ) - std::cos( k * ( x[ i ] - x[ j ] ) ) + c;
 			row += w[ j ] * std::log( d );
 		}
-		total += w[ i ] * row;
+		//The diagonal, i = j: ln D there is ln c. It is constant between
+		//insertions, so the dynamics never see it, but the double integral's
+		//quadrature does: leaving it out is an O(spacing) error, which made
+		//every insertion look like a leak of first order (AGENTS.md).
+		total += w[ i ] * row + 0.5 * w[ i ] * w[ i ] * std::log( c );
 	}
 	return -total / ( 4.0 * kPi );
 }

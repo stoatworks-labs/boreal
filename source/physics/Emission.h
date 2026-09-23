@@ -148,8 +148,9 @@ struct Tables
 	/// emission). Each integrates to 1 over 80-500 km.
 	std::vector< float > shape;
 
-	/// kEnergies x 4: O(1S) population production column per erg, its
-	/// production-weighted lifetime s, and the same for O(1D).
+	/// kEnergies x 4: O(1S) effective production column per erg, its
+	/// emission-weighted lifetime tau_E = int p tau^2 / int p tau (s), and the
+	/// same for O(1D). Their product is the true steady population column.
 	std::vector< float > column;
 
 	/// kEnergies x 4: 427.8, 391.4 and 1P column photons per erg; the fraction

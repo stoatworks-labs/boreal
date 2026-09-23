@@ -222,14 +222,16 @@ Tables BuildTables( double activity )
 		const std::vector< Volume > rows = Profile( activity, EnergyAt( e ), 1.0, &raw );
 
 		//Columns, cm^-2 s^-1 per erg cm^-2 s^-1.
-		double p1S = 0.0, n1S = 0.0, p1D = 0.0, n1D = 0.0, c4278 = 0.0, c3914 = 0.0, c1P = 0.0;
+		double p1S = 0.0, n1S = 0.0, m1S = 0.0, p1D = 0.0, n1D = 0.0, m1D = 0.0, c4278 = 0.0, c3914 = 0.0, c1P = 0.0;
 		for( int i = 0; i < kHeights; ++i )
 		{
 			const double w = TrapezoidWeight( i ) * 1e5;
 			p1S += rows[ i ].prod1S * w;
 			n1S += rows[ i ].prod1S / rows[ i ].loss1S * w;
+			m1S += rows[ i ].prod1S / ( rows[ i ].loss1S * rows[ i ].loss1S ) * w;
 			p1D += rows[ i ].prod1D * w;
 			n1D += rows[ i ].prod1D / rows[ i ].loss1D * w;
+			m1D += rows[ i ].prod1D / ( rows[ i ].loss1D * rows[ i ].loss1D ) * w;
 			c4278 += rows[ i ].e4278 * w;
 			c3914 += rows[ i ].e3914 * w;
 			c1P += rows[ i ].e1P * w;
@@ -246,11 +248,21 @@ Tables BuildTables( double activity )
 			s[ 3 ] = c1P > 0 ? static_cast< float >( rows[ i ].e1P * km / c1P ) : 0.0f;
 		}
 
+		//The factorisation keeps ONE lifetime per line and column, so it is the
+		//one the EMISSION decays with that matters: tau_E = int p tau^2 /
+		//int p tau, the mean lifetime of the population weighted by what it
+		//radiates. (The production-weighted mean, int p tau / int p, is
+		//dominated by the quenched bottom of the profile -- 0.3 s for O(1D) at
+		//5 keV -- and made the red vanish in a third of a second.) The
+		//production entry is then chosen so the steady state is exact:
+		//S = P' tau_E = int p tau, the true steady population column.
+		const double tauS = n1S > 0 ? m1S / n1S : 0.0;
+		const double tauD = n1D > 0 ? m1D / n1D : 0.0;
 		float* c = &t.column[ static_cast< size_t >( e ) * 4 ];
-		c[ 0 ]   = static_cast< float >( p1S );
-		c[ 1 ]   = static_cast< float >( p1S > 0 ? n1S / p1S : 0.0 );//production-weighted lifetime
-		c[ 2 ]   = static_cast< float >( p1D );
-		c[ 3 ]   = static_cast< float >( p1D > 0 ? n1D / p1D : 0.0 );
+		c[ 0 ]   = static_cast< float >( tauS > 0 ? n1S / tauS : 0.0 );
+		c[ 1 ]   = static_cast< float >( tauS );
+		c[ 2 ]   = static_cast< float >( tauD > 0 ? n1D / tauD : 0.0 );
+		c[ 3 ]   = static_cast< float >( tauD );
 
 		float* p = &t.prompt[ static_cast< size_t >( e ) * 4 ];
 		p[ 0 ]   = static_cast< float >( c4278 );
