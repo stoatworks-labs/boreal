@@ -1,125 +1,84 @@
 # Attributions
 
-boreal is built on other people's work. This file lists what that work is,
-who did it, and what it is doing here.
+Boreal is built on other people's work. This file lists what that work is, who did
+it, and what it is doing here.
 
-> **Provisional.** Across the fleet this file is generated from master lists in
-> `stoatworks-backend` by `scripts/sync-attributions.py`. boreal is not
-> registered there yet, so this copy is hand-written. Register it before release
-> — and note that the script's `--only` flag truncates the file rather than
-> filtering it.
+It is generated — the master lists live in the `stoatworks-backend` repo and are
+pushed out by `scripts/sync-attributions.py`. Edit it there, not here.
+
+## Code we derived from other people's work
+
+Someone else solved this first, and this project would not exist in its current form without their work.
+
+### Audio analyser and host-clock vote — Stoatworks rosette
+
+<https://github.com/stoatworks-labs/rosette>  
+Licence: MIT  
+Copyright: Stoatworks Labs
+
+source/Audio.{h,cpp} is millpond's copy of rosette's analyser (itself from macroblock's), with its primed first frame, which brtest --onset checks. The host-clock unit vote in UpdateClock is rosette's.
+
+### Source-plus-Over shape, presets, GL state and harness — Stoatworks downpour
+
+<https://github.com/stoatworks-labs/downpour>  
+Licence: MIT  
+Copyright: Stoatworks Labs
+
+One core registered as a source and an Over effect is downpour's shape; presets as an override with row 1 the defaults are graticule's; GLState.h is vectrix's (from resolume-scopes); PassBuffer, Diag, the CMake shape, the harness shape, the --pipe/--script format, tools/sweep.py and tools/verify.sh are tinsel's and millpond's.
 
 ## Third-party code this project uses
 
+Libraries, SDKs and frameworks the project is built on or bundles.
+
 ### Resolume FFGL SDK
 
-<https://github.com/resolume/ffgl>
-Licence: BSD-3-Clause
+<https://github.com/resolume/ffgl>  
+Licence: BSD-3-Clause  
 Copyright: FreeFrame
 
-Vendored as a git submodule at `external/ffgl`, pinned to `b1afaf9`.
+Vendored as a git submodule at external/ffgl (third_party/ffgl in oxbow).
 
-The plugin ABI itself. An FFGL plugin is defined by this SDK's headers — there
-is no other way to be loadable by Resolume Arena and Avenue.
+The plugin ABI itself. An FFGL effect or source is defined by this SDK's headers — there is no other way to be loadable by Resolume Arena and Avenue.
 
 ### GLEW — the OpenGL Extension Wrangler Library
 
-<https://github.com/nigels-com/glew>
-Licence: BSD-3-Clause (with Mesa 3-D and Khronos components)
+<https://github.com/nigels-com/glew>  
+Licence: BSD-3-Clause (with Mesa 3-D and Khronos components)  
 Copyright: Milan Ikits, Marcelo E. Magallon and Lev Povalahev
 
-Windows only, from vcpkg, statically linked. macOS uses the system OpenGL
-framework instead.
+Arrives inside the FFGL submodule at external/ffgl/deps/glew-2.1.0. Not fetched separately.
 
-### zlib
+Resolves OpenGL entry points on Windows, where the system headers stop at OpenGL 1.1.
 
-<https://zlib.net>
-Licence: zlib
-Copyright: Jean-loup Gailly and Mark Adler
+### libpng
 
-Ships with macOS. The offline harness links it to deflate its PNG output.
-Nothing in the shipped plugin uses it.
+<http://www.libpng.org/pub/png/libpng.html>  
+Licence: PNG Reference Library License (libpng)  
+Copyright: the PNG Reference Library authors
 
-## Data
+Arrives inside the FFGL submodule, under the SDK's CustomThumbnail sample.
 
-### NRLMSIS 2.1
+Part of the upstream SDK tree rather than something these plugins call directly — listed because it is present in the checkout.
 
-Emmert et al., "NRLMSIS 2.0: A whole-atmosphere empirical model of temperature
-and neutral species densities", *Earth and Space Science* 8 (2021),
-[doi:10.1029/2020EA001321](https://doi.org/10.1029/2020EA001321). A US Naval
-Research Laboratory model (US Government work). Evaluated once, offline,
-through [pymsis](https://github.com/SWxTREC/pymsis) 0.13.0 by
-`tools/bake_atmosphere.py`; the result is the table in
-`source/physics/AtmosphereTable.cpp`. Neither model nor wrapper ships.
+## Inspirations
 
-### CIE colour-matching functions
+What this set out to be. No code, assets or binaries from any of these were used or examined — the debt is to the idea.
 
-The CIE 1931 2° colour-matching functions and the CIE 1951 scotopic luminous
-efficiency, from the 1 nm tables at the [CVRL](http://www.cvrl.org) database
-(`ciexyz31_1.csv`, `scvle_1.csv`), interpolated to the line wavelengths by
-`tools/bake_colour.py`. Nine rows of numbers are baked into `Optics.cpp`.
+### Auroral arcs as vortex sheets
 
-### Atomic data
+Hallinan & Davis, Planet. Space Sci. 18, 1735 (1970), and Hallinan, J. Geophys. Res. 81, 3959 (1976); the regularised periodic vortex sheet and point insertion after R. Krasny, J. Fluid Mech. 167, 65 (1986). Implemented from the equations; the growth rate of the regularised kernel is derived in AGENTS.md.
 
-Einstein A coefficients for O I 557.7, 297.2, 295.8, 630.0, 636.4 and
-639.2 nm from the NIST Atomic Spectra Database (Kramida, Ralchenko, Reader and
-NIST ASD Team), retrieved 2026-09-23.
+## Standards and published specifications
 
-### Rate coefficients and yields as used in GLOW
+What the implementation is measured against.
 
-Quenching rates for O(¹S) and O(¹D), the N₂(A) energy-transfer rates, the N₂⁺
-first-negative branching and the O₂⁺ recombination yield of O(¹D), with the
-original attributions GLOW gives them (Streit et al. 1976; Slanger et al.
-1972; Slanger & Black 1981; Abreu et al. 1986; Piper et al. 1981; Borst & Zipf
-1970; Shemansky & Broadfoot 1971), read from `gchem.f90` in
-[NCAR/GLOW](https://github.com/NCAR/GLOW) (S. C. Solomon). Numbers only; no
-code is taken.
-
-## Work from elsewhere in the fleet
-
-### millpond, rosette — the audio analyser and the clock
-
-<https://github.com/stoatworks-labs/rosette>
-Licence: MIT
-Copyright: Stoatworks Labs
-
-`source/Audio.{h,cpp}` is millpond's copy of rosette's analyser (itself from
-macroblock's), with its primed first frame, which `brtest --onset` checks. The
-host-clock unit vote in `UpdateClock` is rosette's.
-
-### downpour, graticule, tinsel, vectrix, millpond
-
-<https://github.com/stoatworks-labs/downpour>
-Licence: MIT
-Copyright: Stoatworks Labs
-
-One core registered as a source and an Over effect (downpour); presets as an
-override with row 1 the defaults (graticule); `GLState.h` (vectrix, from
-resolume-scopes); `PassBuffer`, `Diag`, the CMake shape, the harness shape,
-the `--pipe`/`--script` format, `tools/sweep.py` and `tools/verify.sh` (tinsel,
-millpond).
-
-## Method
-
-Physics described in papers, implemented here from the equations:
-
-- Auroral arcs as vortex sheets: Hallinan & Davis, *Planet. Space Sci.* 18,
-  1735 (1970); Hallinan, *J. Geophys. Res.* 81, 3959 (1976).
-- The δ-regularised periodic vortex sheet and point insertion: R. Krasny,
-  *J. Fluid Mech.* 167, 65 (1986). The linear growth rate of the regularised
-  periodic kernel is derived in AGENTS.md.
-- The Knight relation: S. Knight, *Planet. Space Sci.* 21, 741 (1973).
-- Energy deposition: X. Fang et al., *J. Geophys. Res.* 113, A09311 (2008),
-  [doi:10.1029/2008JA013384](https://doi.org/10.1029/2008JA013384), and
-  *Geophys. Res. Lett.* 37, L22106 (2010),
-  [doi:10.1029/2010GL045406](https://doi.org/10.1029/2010GL045406). Both
-  papers' coefficient tables are transcribed into `Emission.cpp`.
-- Rayleigh optical depth: Hansen & Travis, *Space Sci. Rev.* 16, 527 (1974).
-- Relative airmass: Kasten & Young, *Applied Optics* 28, 4735 (1989).
-- The van Rhijn function (1921).
-- Mesopic photometry: CIE 191:2010.
+- **S. Knight, "Parallel electric fields", Planet. Space Sci. 21, 741 (1973)** — The current-voltage relation that sets the electrons' energy from the sheet's field-aligned current.
+- **X. Fang et al., J. Geophys. Res. 113, A09311 (2008) and Geophys. Res. Lett. 37, L22106 (2010)** — The ionisation-rate parameterisations; both papers' coefficient tables are transcribed into Emission.cpp.
+- **NRLMSIS 2.1 (Emmert et al., Earth and Space Science 8, 2021), via pymsis 0.13.0** — Evaluated once offline by tools/bake_atmosphere.py; the result is the table in source/physics/AtmosphereTable.cpp. Neither the model nor the wrapper ships.
+- **NIST Atomic Spectra Database, and the rate coefficients as NCAR GLOW uses them** — Einstein A coefficients for the O I lines; quenching and energy-transfer rates and yields read from GLOW's gchem.f90 with their original attributions. Numbers only; no code is taken.
+- **CIE 1931 colour-matching functions, CIE 1951 scotopic efficiency (CVRL tables) and CIE 191:2010 mesopic photometry** — Line chromaticities baked by tools/bake_colour.py; the Eye observer follows CIE 191.
+- **Hansen & Travis (1974), Kasten & Young (1989) and van Rhijn (1921)** — Rayleigh optical depth, relative airmass and the airglow's brightening toward the horizon.
 
 ## Getting this wrong
 
-If your work is here and the description is inaccurate, the licence is wrong, or
-you would rather not be listed — open an issue and it will be fixed.
+If your work is here and the description is inaccurate, the licence is wrong, or you would rather not be listed — open an issue and it will be fixed.
