@@ -113,6 +113,17 @@ What falls out rather than being arranged:
 <sub>The same sky as a research all-sky camera records it: equidistant
 fisheye, north up, east on the left. Rendered by `brtest`.</sub>
 
+[![Boreal — the aurora from the physics up, for Resolume](docs/video-thumb.png)](https://www.youtube.com/watch?v=nxjoAHW9NI4)
+
+*[Watch it](https://www.youtube.com/watch?v=nxjoAHW9NI4) — 91 seconds:
+a straight arc rolling itself up into curls, a substorm surging west, the corona
+overhead, a red storm, the pink lower border of a hard display, the all-sky
+fisheye, the southern lights, the dark-adapted eye, and the Over effect putting
+the sky behind and over two of Resolume's demo clips. Every frame is the real
+plugins' output: an FFGL plugin has no window, so the footage is rendered by
+this repository's own offline harness (`brtest --film` and `--pipe`, driven by
+a cue sheet) rather than filmed off a screen.*
+
 ## Controls
 
 - **Sky:** Hemisphere (*Borealis*/*Australis* — the oval moves to the other
