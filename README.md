@@ -2,7 +2,8 @@
 
 > **AI-assisted project.** This codebase was created with [Claude](https://claude.com/claude-code)
 > (Anthropic), directed and reviewed by a human author. It has **never been
-> loaded into Resolume**. Everything below is measured by an offline harness
+> loaded into Resolume on macOS**; on Windows it loads and renders in Resolume
+> Arena on software rendering (see [Status](#status)). Everything below is measured by an offline harness
 > that drives the real plugin classes in a headless GL context, and the checks
 > run against the physics, not against screenshots. `brtest --kh` grows a wave
 > on the plugin's own vortex sheet and matches the growth rate derived for its
@@ -34,6 +35,38 @@ port of the vortex sheet and the emission tables, with every control and every
 preset. It is a port and not the plugin: the sheet is capped at 1024 nodes
 rather than 4096 and nothing audio is there. Read
 [what the page itself says it does not reproduce](https://boreal-demo.stoatworks-labs.com).
+
+<!-- downloads:start -->
+
+## Download
+
+**[v0.1.0](https://github.com/stoatworks-labs/boreal/releases/tag/v0.1.0)** — prebuilt for macOS and Windows. Pick your platform:
+
+<details>
+<summary><b>macOS</b> — Universal (Apple Silicon + Intel)</summary>
+
+| Build | Download | Size |
+| --- | --- | --- |
+| Universal (Apple Silicon + Intel) · .dmg disk image | [`boreal-0.1.0-macos-universal.dmg`](https://github.com/stoatworks-labs/boreal/releases/download/v0.1.0/boreal-0.1.0-macos-universal.dmg) | 706 KB |
+| Universal (Apple Silicon + Intel) · .zip archive | [`boreal-macos-universal.zip`](https://github.com/stoatworks-labs/boreal/releases/latest/download/boreal-macos-universal.zip) | 637 KB |
+
+</details>
+
+<details>
+<summary><b>Windows</b> — x64</summary>
+
+| Build | Download | Size |
+| --- | --- | --- |
+| x64 · .exe installer | [`boreal-0.1.0-windows-x86_64-setup.exe`](https://github.com/stoatworks-labs/boreal/releases/download/v0.1.0/boreal-0.1.0-windows-x86_64-setup.exe) | 282 KB |
+| x64 · .zip archive | [`boreal-windows-x86_64.zip`](https://github.com/stoatworks-labs/boreal/releases/latest/download/boreal-windows-x86_64.zip) | 342 KB |
+
+</details>
+
+All builds, checksums and release notes: [github.com/stoatworks-labs/boreal/releases](https://github.com/stoatworks-labs/boreal/releases).
+
+macOS builds are signed and notarised and open normally. The Windows builds are unsigned, so SmartScreen warns once.
+
+<!-- downloads:end -->
 
 ## The one idea
 
@@ -109,16 +142,25 @@ fisheye, north up, east on the left. Rendered by `brtest`.</sub>
 
 ## Status
 
-**v0.1.0, 2026-09-23, and honestly early.**
+**v0.1.0, 2026-09-24, and honestly early.**
 
-It has **never been loaded into Resolume**. `oxbow probe` reads the bundles as
-a host does (`SW Boreal` / `BR01` / source, `SW Boreal Over` / `BR02` /
-effect) and `oxbow selftest` renders 120 frames through each. Nothing else has
-run them. There is a [user guide](docs/USER-GUIDE.md) and a
+It has **never been loaded into Resolume on macOS**. `oxbow probe` reads the
+bundles as a host does (`SW Boreal` / `BR01` / source, `SW Boreal Over` /
+`BR02` / effect) and `oxbow selftest` renders 120 frames through each.
+
+**Windows, in Resolume Arena 7.27.1** (win-lab, Mesa llvmpipe, no GPU,
+2026-09-24): a CI build of this source loads from Extra Effects, both plugins
+register with the right id and type, all 43 (source) and 48 (effect) host
+controls match what the plugin declares, both render, and Arena's log stays
+clean: 15 of 15 of the fleet gate's checks, with the audio controls skipped
+(win-lab has no sound device). 33 of the source's and 38 of the effect's
+controls measurably moved the picture; Substorm and Calm are buttons the gate
+does not press. Software rendering says nothing about a GPU or about speed.
+
+There is a [user guide](docs/USER-GUIDE.md) and a
 [browser demo](https://boreal-demo.stoatworks-labs.com) (a port, not the
 plugin); no OpenFX port. Built and
-measured on macOS (Apple Silicon, M4 Max) only; the Windows build is in CI and
-has never been run.
+measured on macOS (Apple Silicon, M4 Max); the Windows build is MSVC's, from CI.
 
 What is measured, on this machine:
 

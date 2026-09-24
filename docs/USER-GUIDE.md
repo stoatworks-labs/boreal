@@ -26,7 +26,10 @@ perspective. Rendered by the plugin's offline harness, not captured from Resolum
 > one-character mutants of the shipped code are all caught, and all 39 parameters across the two
 > plugins measurably do something. It has **never been loaded into Resolume on macOS**. The one
 > host it has run in is the fleet's own test host, `oxbow`, for 120 frames through each plugin.
-> On Windows it has not yet been run in Resolume Arena.
+> On Windows, a build of v0.1.0 loads, registers and renders in Resolume Arena 7.27.1, with every
+> control matching what the plugins declare and 33 of the source's and 38 of the effect's controls
+> shown moving the picture — on software rendering, so that says nothing about a GPU. Substorm and
+> Calm are buttons the test never pressed, and the audio controls had no sound device to hear.
 > Try it on a spare layer before you put it in a show.
 >
 > This codebase was created with AI assistance, directed and reviewed by a human author.
