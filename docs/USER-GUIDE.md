@@ -478,7 +478,7 @@ control does nothing.
   the panel to show where each slider is rather than kilometres or keV. This guide gives the
   mappings.
 - **Presets override**, so while one is selected most sliders are inert (see Presets).
-- **Not timed in a host, or on Windows.** No OpenFX version and no browser demo.
+- **Not timed in a host, or on Windows.** No OpenFX version. There is a [browser demo](https://boreal-demo.stoatworks-labs.com), but it runs a JavaScript port of the engine that only a reader checks, so it is a preview, not the plugin.
 
 ---
 
