@@ -31,6 +31,16 @@ directory = "./demo"
 
 # Attached here rather than by hand in the dashboard, so the hostname is part of
 # the repo and a fresh deploy cannot come up without it.
+#
+# A ROUTE, not a custom domain like most of the fleet's demos. On 2026-09-24
+# stoatworks-labs.com reached Cloudflare's limit of 100 Workers custom domains
+# per zone, and `custom_domain = true` failed with API error 100122 ("exceeded
+# the limit of 100 Workers custom domains") while the upload itself succeeded --
+# so wrangler reports a Worker that nothing serves. A route has no such limit,
+# but it needs a proxied DNS record to exist first, which wrangler does not
+# create: `boreal-demo` is an AAAA 100:: record, proxied, made through the API the
+# same day (slowscan's recipe). Delete that record and this page goes dark with a
+# green deploy.
 [[routes]]
-pattern = "boreal-demo.stoatworks-labs.com"
-custom_domain = true
+pattern = "boreal-demo.stoatworks-labs.com/*"
+zone_name = "stoatworks-labs.com"
