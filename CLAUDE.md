@@ -48,6 +48,9 @@ or anything that decides what one lifetime per line means.
   `tools/glslc.sh`. verify.sh runs both too, plus the `--pipe` format checks.
 - No dead controls: `python3 tools/sweep.py` (39 parameters, both plugins).
 - Preset rows: `python3 tools/check_presets.py`.
+- The demo's shaders, NRLMSIS table and preset rows are still the plugin's:
+  `python3 demo/tools/check_shaders.py` (rebake the table's JS copy with
+  `python3 demo/tools/bake_atmosphere.py`).
 - Cost: `--bench` (720p/1080p/4K), `--engine` (CPU per RK4 step at N = 512,
   2048, 4096).
 
@@ -79,10 +82,19 @@ or anything that decides what one lifetime per line means.
 - `boreal_core` is an OBJECT library: the registrations are file-scope
   constructors nothing references.
 - Local repo only: no GitHub remote, no tag, not registered on the website.
+- `demo/` is the browser demo at boreal-demo.stoatworks-labs.com: the plugin's
+  own ten GLSL pieces copied verbatim, plus `demo/port.js`, a JavaScript port
+  of the sheet, the engine and the emission tables (node cap 1024, not 4096).
+  `demo/vendor/` is the shared kit — do not edit it; it is copied in by
+  `stoatworks-backend/resolume-demo/sync.sh boreal`. Deploy from the repo root
+  with `cf-run npx wrangler deploy`, and verify by CONTENT: a wrong page still
+  answers 200. Change a shader, the table or a preset row and copy it across;
+  change Sheet/Engine/Emission/Atmosphere/Optics/Controls and change port.js.
 
 ## Not done yet
-- Never loaded into Resolume (oxbow selftest only). No OpenFX port, no browser
-  demo, no user guide. Never built on Windows.
+- Never loaded into Resolume (oxbow selftest only). No OpenFX port. Never
+  built on Windows. The browser demo is a port, driven only in desktop Chrome
+  on macOS; nothing on it measures anything.
 - `StoatworksAbout.h` and `ATTRIBUTIONS.md` are provisional hand copies.
 
 ## Diagnostics

@@ -1,0 +1,6 @@
+# Not part of the page. README.md documents the demo for whoever edits it next,
+# and tools/ holds the repo-side checks (check_shaders.py, bake_atmosphere.py);
+# wrangler would otherwise upload both and serve them, which is neither useful
+# nor anybody's business.
+README.md
+tools/

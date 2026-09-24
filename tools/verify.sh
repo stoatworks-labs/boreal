@@ -60,6 +60,21 @@ step "Shaders"
 tools/glslc.sh || fail "a shader does not compile"
 
 #---------------------------------------------------------------------------
+step "Demo: the browser copy of the shaders"
+#---------------------------------------------------------------------------
+# demo/plugin.js cannot include a C++ file, so it carries its own copy of every
+# shader piece, of the NRLMSIS table (demo/atmosphere.js) and of the preset
+# rows, and two copies drift quietly: the plugin keeps working, the page keeps
+# working, and they stop being the same sky. This compares them character for
+# character. It says nothing about the demo's PORT of the CPU half
+# (demo/port.js); only a reader can check that.
+if [[ -f demo/tools/check_shaders.py ]]; then
+	python3 demo/tools/check_shaders.py || fail "the demo's copies have drifted from the plugin's"
+else
+	echo "   skipped: no demo/"
+fi
+
+#---------------------------------------------------------------------------
 step "Submodule"
 #---------------------------------------------------------------------------
 if [[ ! -f external/ffgl/CMakeLists.txt ]]; then

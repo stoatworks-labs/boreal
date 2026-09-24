@@ -28,6 +28,13 @@ moderate solar activity, looking up the field line. Every ray points at the
 magnetic zenith because it IS a field line, seen in perspective. Rendered by
 the plugin's offline harness (`brtest`), not captured from Resolume.</sub>
 
+**[Try it in your browser](https://boreal-demo.stoatworks-labs.com)** — both
+plugins' six GLSL passes, copied unedited and run in WebGL2, over a JavaScript
+port of the vortex sheet and the emission tables, with every control and every
+preset. It is a port and not the plugin: the sheet is capped at 1024 nodes
+rather than 4096 and nothing audio is there. Read
+[what the page itself says it does not reproduce](https://boreal-demo.stoatworks-labs.com).
+
 ## The one idea
 
 **An auroral arc is a sheet of electric charge drifting in crossed electric
@@ -107,8 +114,9 @@ fisheye, north up, east on the left. Rendered by `brtest`.</sub>
 It has **never been loaded into Resolume**. `oxbow probe` reads the bundles as
 a host does (`SW Boreal` / `BR01` / source, `SW Boreal Over` / `BR02` /
 effect) and `oxbow selftest` renders 120 frames through each. Nothing else has
-run them. There is a [user guide](docs/USER-GUIDE.md); no OpenFX port and no
-browser demo. Built and
+run them. There is a [user guide](docs/USER-GUIDE.md) and a
+[browser demo](https://boreal-demo.stoatworks-labs.com) (a port, not the
+plugin); no OpenFX port. Built and
 measured on macOS (Apple Silicon, M4 Max) only; the Windows build is in CI and
 has never been run.
 
@@ -133,6 +141,7 @@ What is measured, on this machine:
 | negative controls | **14** deliberately wrong models, **all 14** detected |
 | mutants | **3** one-character changes (two GLSL, one engine), **all 3** caught |
 | dead controls | **39** parameters over both plugins, all live |
+| browser demo | its ten shader pieces, the NRLMSIS table and the seven preset rows are byte-identical to the plugin's (`demo/tools/check_shaders.py`); its JavaScript port of the CPU half is checked by nobody but a reader |
 
 Render cost (`brtest --bench`, the defaults, Detail Half, the median frame):
 **4.4–9 ms at 720p, 6–12 ms at 1080p, 15–32 ms at 4K** — the spread is
@@ -162,7 +171,9 @@ What is **not** verified, and is the honest limit of this release:
 - Rays are the one stochastic texture, a seeded spectrum standing for
   field-aligned filamentation the model does not resolve.
 
-No OpenFX port and no browser demo yet.
+No OpenFX port yet. The browser demo is a port, not a measurement: WebGL2
+gives GLSL ES 3.00, not desktop GL 4.1 core, and nothing on the page checks
+anything.
 
 ## Build
 

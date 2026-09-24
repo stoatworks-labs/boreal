@@ -432,6 +432,62 @@ This proves the harness drives the shaders the plugin ships, not a second copy.
   Krasny 1986) are cited from memory, not re-fetched; the Fang papers, NIST,
   GLOW and CVRL were read this session.
 
+## The browser demo
+
+`demo/` is the page at **boreal-demo.stoatworks-labs.com**. It is a *port*,
+not a recording and not the plugin, and the two halves are not equally
+faithful:
+
+- **The GPU half is the plugin's.** The ten constants at the top of
+  `demo/plugin.js` are the ten `R"(...)"` bodies of `source/Shaders.cpp`,
+  copied unedited and assembled as `Assemble()` does, run as the same six
+  passes in the same order at the same map sizes (1024² 32-bit float maps, a
+  32² all-sky). `demo/tools/check_shaders.py` compares them character for
+  character, and also the NRLMSIS table (`demo/atmosphere.js`, written by
+  `demo/tools/bake_atmosphere.py`) and the seven preset rows; `tools/verify.sh`
+  runs it. **Two copies drift quietly**, and a plausible sky looks exactly
+  like the right one.
+- **The CPU half is a port** (`demo/port.js`): Controls, Sheet, Engine,
+  Precipitation, Atmosphere, Emission's `BuildTables`, Optics' components,
+  function for function. **Nothing checks it but a reader.** When it was
+  written (2026-09-24) it was compared once against the C++ built from this
+  tree: after 600 frames at 4× with a substorm at frame 300, the same node
+  count, refusals, sky time and base strength, node positions agreeing to about
+  six significant figures (the sheet is chaotic and `exp`/`cos` differ in the
+  last ulp), and `BuildTables` to every printed digit. That comparison is not a
+  check that runs; change Sheet/Engine/Emission and change port.js too.
+
+### What is reduced, and what is absent
+
+- **The node cap is 1024, not 4096.** The pair sum is O(N²); the plugin's is
+  C++ on up to four threads (~14 ms a step at 4096), the page's is one
+  JavaScript thread on the main thread (~10 ms at 1024 on an M4 Max while
+  other builds ran). Everything the plugin does at its cap it does at the
+  page's — refuses insertions, counts them, draws the curls coarser — and each
+  arc starts at 512 nodes 8 km apart instead of 1024 at 4 km. The large folds
+  and surges are the plugin's; the finest curls are coarser. A line under the
+  canvas reports nodes, refusals and the step's cost.
+- **The engine runs on the main thread, one frame behind**: the frame draws
+  the previous job's snapshot, then runs this frame's job — the plugin's
+  sequence of states without the worker.
+- **Nothing audio.** The `Audio` FFT buffer, Audio Substorm and Audio Flux are
+  absent (no Resolume FFT in a browser); Audio Flux's factor is its silent 1.
+- **Substorm and Calm** are toggles the page releases in the frame that takes
+  the press (the kit has no FF_TYPE_EVENT); **Arcs and Seed** are dropdowns
+  (the kit has no FF_TYPE_INTEGER), Seed offering 0–99. The About block is
+  absent.
+- **Preset is the plugin's override**, reproduced as `Effective()`, not the
+  kit's preset menu that writes sliders.
+- **Restart is a clock jump**: the plugin passes no sky time across a
+  backwards step, so the sky carries on; Calm restarts it.
+- **Both plugins on one page**, picked by the kit's variant dropdown. The Over
+  group and the clip controls are hidden for the source (by inline style —
+  kit.css's `display` beats the `hidden` attribute).
+
+GLSL ES 3.00 in WebGL2, not desktop GL 4.1 core, and a browser's clock: a
+pixel there is not evidence about a pixel in Resolume. `brtest` is the reason
+to believe the sky, and the page says so.
+
 ## What is genuinely verified, and what is assumed
 
 Verified on this machine (M4 Max, macOS 26): everything in the README's Status
