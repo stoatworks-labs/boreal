@@ -1605,9 +1605,11 @@ const PARAMS = [
 const demo = mountDemo({
   name: 'Boreal',
   pluginId: 'BR01 · BR02',
+  kind: ['effect', 'source'],
   tagline:
     'The aurora borealis and australis. The arc is a sheet of charge drifting at E×B — a vortex sheet — that rolls itself into curls, folds and surges by the Kelvin–Helmholtz instability; the electrons it accelerates light the green, red, blue and pink lines at the heights an NRLMSIS atmosphere puts them; and a camera on a spherical Earth looks up through it all. The six render passes here are the plugin’s own GLSL; the vortex sheet and the emission tables are a JavaScript port of its C++, with the sheet capped at 1024 nodes rather than 4096. Nothing audio is on this page.',
   repo: 'https://github.com/stoatworks-labs/boreal',
+  page: 'https://stoatworks-labs.com/software/boreal/',
 
   blurb:
     'It is Boreal’s own six GLSL passes, ported from the repository to WebGL2 and driven by a JavaScript port of its C++ vortex sheet and emission tables — a port only a reader checks, with the sheet capped at 1024 nodes where the plugin allows 4096, so the finest curls are coarser. SW Boreal is a source and reads no video; SW Boreal Over adds the same sky to a generated clip as light.',
