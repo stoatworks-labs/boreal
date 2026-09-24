@@ -107,7 +107,8 @@ fisheye, north up, east on the left. Rendered by `brtest`.</sub>
 It has **never been loaded into Resolume**. `oxbow probe` reads the bundles as
 a host does (`SW Boreal` / `BR01` / source, `SW Boreal Over` / `BR02` /
 effect) and `oxbow selftest` renders 120 frames through each. Nothing else has
-run them. There is no OpenFX port, no browser demo and no user guide. Built and
+run them. There is a [user guide](docs/USER-GUIDE.md); no OpenFX port and no
+browser demo. Built and
 measured on macOS (Apple Silicon, M4 Max) only; the Windows build is in CI and
 has never been run.
 
