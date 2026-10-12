@@ -2,39 +2,32 @@
 
 > **AI-assisted project.** This codebase was created with [Claude](https://claude.com/claude-code)
 > (Anthropic), directed and reviewed by a human author. It has **never been
-> loaded into Resolume on macOS**; on Windows it loads and renders in Resolume
-> Arena on software rendering (see [Status](#status)). Everything below is measured by an offline harness
-> that drives the real plugin classes in a headless GL context, and the checks
-> run against the physics, not against screenshots. `brtest --kh` grows a wave
-> on the plugin's own vortex sheet and matches the growth rate derived for its
-> regularised kernel to **10⁻⁹**. `--deposition` puts the ionisation peaks
-> within **1.5 km** of Fang et al.'s published figure. `--quench` holds the
-> red/green ratio the GPU samples to the collisional-quenching formula at every
-> height, and `--lifetime` holds the populations to the exponential decay the
-> table says. `--corona` finds the rays' vanishing point within **0.3 px** of
-> the magnetic zenith at three rasters and in both hemispheres. `brtest
-> --negative` re-runs fourteen checks against deliberately wrong models, and
-> `tools/mutate.sh` changes one character of the shipped shaders and engine;
-> every one is caught. A control sweep fails if any parameter does nothing
-> (see [Status](#status)).
+> loaded into Resolume on macOS**. On Windows it loads and renders in Resolume Arena on
+> software rendering. Everything else is measured by an offline harness that drives the
+> plugin's own classes in a headless GL context, and it checks the physics rather than
+> screenshots: a wave on the vortex sheet grows at the derived rate to **10⁻⁹**, the
+> ionisation peaks sit within **1.5 km** of Fang et al.'s published figure, and the rays meet
+> the magnetic zenith within **0.3 px**. The full rundown, and what I haven't checked, is
+> under [Status](#status).
 
-The aurora borealis and australis for Resolume Arena/Avenue, as two FFGL
-plugins: **SW Boreal**, a source that is the night sky, and **SW Boreal Over**,
-an effect that adds the aurora to your clip as light.
+The aurora borealis and australis for Resolume Arena and Avenue, worked out from
+the physics up, as two FFGL plugins: **SW Boreal**, a source that's the whole night
+sky, and **SW Boreal Over**, an effect that adds the aurora to your clip as light.
+Unlike the real thing, it turns up when you ask it to.
 
 ![A corona overhead: green curtains with red tops converging on the magnetic zenith, stars behind](docs/hero.png)
 
 <sub>A corona, a few minutes after a substorm: four arcs overhead at
 moderate solar activity, looking up the field line. Every ray points at the
-magnetic zenith because it IS a field line, seen in perspective. Rendered by
-the plugin's offline harness (`brtest`), not captured from Resolume.</sub>
+magnetic zenith because each ray is a field line, seen in perspective. Rendered
+by the plugin's offline harness (`brtest`) rather than captured from Resolume.</sub>
 
-**[Try it in your browser](https://boreal-demo.stoatworks-labs.com)** — both
-plugins' six GLSL passes, copied unedited and run in WebGL2, over a JavaScript
-port of the vortex sheet and the emission tables, with every control and every
-preset. It is a port and not the plugin: the sheet is capped at 1024 nodes
-rather than 4096 and nothing audio is there. Read
-[what the page itself says it does not reproduce](https://boreal-demo.stoatworks-labs.com).
+**[Try it in your browser](https://boreal-demo.stoatworks-labs.com).** It runs
+both plugins' six GLSL passes, copied across unedited, in WebGL2, on top of a
+JavaScript port of the vortex sheet and the emission tables, with every control
+and every preset. It's a port, so it isn't quite the plugin: the sheet stops at
+1024 nodes rather than 4096, and there's no audio. The page has
+[its own list of what it doesn't reproduce](https://boreal-demo.stoatworks-labs.com).
 
 <!-- downloads:start -->
 
@@ -71,40 +64,40 @@ macOS builds are signed and notarised and open normally. The Windows builds are 
 ## The one idea
 
 **An auroral arc is a sheet of electric charge drifting in crossed electric
-and magnetic fields — and a charge sheet drifting at E×B is a vortex sheet.**
+and magnetic fields, and a charge sheet drifting at E×B is a vortex sheet.**
 The drift velocity is ẑ×∇φ/B, so the electric potential is a stream function
-and the space charge is its vorticity. A thin arc therefore obeys the same
-equations as a thin sheet of spinning fluid, and it is unstable in the same
+and the space charge is its vorticity. That means a thin arc obeys the same
+equations as a thin sheet of spinning fluid, and it's unstable in the same
 way: it rolls itself up (Hallinan & Davis 1970).
 
-So nothing is drawn with a noise function. The **curls**, the **folds** and the
-westward-rolling **surge** of a substorm are one instability at different
+So none of it is drawn with a noise function. The **curls**, the **folds** and the
+westward-rolling **surge** of a substorm are all one instability at different
 scales, and **Curl Size** is a physical length: the smoothing length of the
-sheet, which sets the wavelength that grows fastest. Four more models follow,
-with every constant in the open:
+sheet, which sets the wavelength that grows fastest. Four more models follow on
+from that, with every constant out in the open:
 
 - **Precipitation.** Where the sheet is wound up tight, the current along the
   field is high, and by the Knight relation so is the electrons' energy. The
   brightest curls are the hardest.
-- **The atmosphere.** The electrons' energy goes into a real atmosphere
-  (NRLMSIS) at the heights Fang et al.'s parameterisation gives, and excites
-  each spectral line by its own chemistry.
-- **Lifetime.** The green line's atoms live 0.7 s before they glow, the red
-  line's minutes — and at low altitude the red ones are knocked out of it by
-  collisions first. So **the red lives above 200 km, lags behind a moving curl
-  and lingers** after it; nobody places it there.
+- **The atmosphere.** The electrons' energy goes into the atmosphere as
+  NRLMSIS models it, at the heights Fang et al.'s parameterisation gives, and
+  excites each spectral line by its own chemistry.
+- **Lifetime.** The green line's atoms live 0.7 s before they glow and the red
+  line's live for minutes, and at low altitude the red ones get knocked out of
+  it by collisions first. So **the red lives above 200 km, lags behind a moving
+  curl and lingers** after it, and nobody had to put it there.
 - **A camera on the ground** looks up through all of it, on a curved Earth,
-  with the air in between dimming and reddening what is low.
+  with the air in between dimming and reddening whatever's low.
 
-What falls out rather than being arranged:
+What falls out of the physics without anyone arranging it:
 
 - the **pink/violet lower border** of a hard display (the green needs oxygen,
-  which thins below 100 km; nitrogen does not);
+  which thins below 100 km, and nitrogen doesn't);
 - the **corona** overhead, rays converging on the magnetic zenith, and arcs on
   the horizon shrinking to bands;
 - **red tops** that rise with solar activity;
-- the faint **airglow** band low in every long exposure (its brightening toward
-  the horizon is geometry);
+- the faint **airglow** band low in every long exposure (the brightening toward
+  the horizon is just geometry);
 - **snow that goes green** under a strong display (the Over effect's
   Illumination, and the source's ground).
 
@@ -115,18 +108,18 @@ fisheye, north up, east on the left. Rendered by `brtest`.</sub>
 
 [![Boreal — the aurora from the physics up, for Resolume](docs/video-thumb.png)](https://www.youtube.com/watch?v=nxjoAHW9NI4)
 
-*[Watch it](https://www.youtube.com/watch?v=nxjoAHW9NI4) — 91 seconds:
-a straight arc rolling itself up into curls, a substorm surging west, the corona
+*[Watch it](https://www.youtube.com/watch?v=nxjoAHW9NI4) (91 seconds): a
+straight arc rolling itself up into curls, a substorm surging west, the corona
 overhead, a red storm, the pink lower border of a hard display, the all-sky
 fisheye, the southern lights, the dark-adapted eye, and the Over effect putting
-the sky behind and over two of Resolume's demo clips. Every frame is the real
-plugins' output: an FFGL plugin has no window, so the footage is rendered by
-this repository's own offline harness (`brtest --film` and `--pipe`, driven by
-a cue sheet) rather than filmed off a screen.*
+the sky behind and over two of Resolume's demo clips. It's all the plugins' own
+output. An FFGL plugin doesn't have a window to film, so the footage comes from
+this repo's offline harness (`brtest --film` and `--pipe`, driven by a cue
+sheet) rather than a recording of a screen.*
 
 ## Controls
 
-- **Sky:** Hemisphere (*Borealis*/*Australis* — the oval moves to the other
+- **Sky:** Hemisphere (*Borealis*/*Australis*: the oval moves to the other
   side of the sky and the curls turn the other way), Oval Distance (km poleward
   of you; negative puts it overhead or behind), Dip, Declination, Speed (sky
   time: 0 freezes, 1× is real time, up to 64×), Seed.
@@ -141,19 +134,19 @@ a cue sheet) rather than filmed off a screen.*
   Elevation, Field of View, Roll, Exposure, Observer (*Camera* keeps the
   sensor's colour; *Eye* is the dark-adapted eye, CIE 191 mesopic: faint aurora
   goes grey-green and the red nearly vanishes), Stars, Star Motion, Horizon
-  (*None* — transparent below the horizon — *Flat*, *Hills*), Detail (the ray
-  march's resolution).
+  (*None*, which is transparent below the horizon, *Flat* or *Hills*), Detail
+  (the ray march's resolution).
 - **Audio:** Audio (Resolume's FFT buffer), Audio Substorm (each onset is a
   substorm), Audio Flux (the level brightens the display).
 - **Preset:** *Boreal* (the defaults), *Quiet Arc*, *Corona*, *Red Storm*,
   *Rayed Band*, *Australis*, *Eye*.
-- **Over only:** Sky Mask (*Everything*, *Alpha* — the clip's transparent
-  sky becomes the night sky — or *Dark Areas*), Mask Threshold, Illumination,
+- **Over only:** Sky Mask (*Everything*, *Alpha*, where the clip's transparent
+  sky becomes the night sky, or *Dark Areas*), Mask Threshold, Illumination,
   Mix.
 
 ## Status
 
-**v0.1.0, 2026-09-24, and honestly early.**
+**v0.1.0, 2026-09-24, and still early days.**
 
 It has **never been loaded into Resolume on macOS**. `oxbow probe` reads the
 bundles as a host does (`SW Boreal` / `BR01` / source, `SW Boreal Over` /
@@ -166,14 +159,14 @@ controls match what the plugin declares, both render, and Arena's log stays
 clean: 15 of 15 of the fleet gate's checks, with the audio controls skipped
 (win-lab has no sound device). 33 of the source's and 38 of the effect's
 controls measurably moved the picture; Substorm and Calm are buttons the gate
-does not press. Software rendering says nothing about a GPU or about speed.
+doesn't press. Software rendering says nothing about a GPU or about speed.
 
-There is a [user guide](docs/USER-GUIDE.md) and a
+There's a [user guide](docs/USER-GUIDE.md) and a
 [browser demo](https://boreal-demo.stoatworks-labs.com) (a port, not the
-plugin); no OpenFX port. Built and
-measured on macOS (Apple Silicon, M4 Max); the Windows build is MSVC's, from CI.
+plugin), and no OpenFX port. I built and measured it on macOS (Apple Silicon,
+M4 Max); the Windows build is MSVC's, from CI.
 
-What is measured, on this machine:
+What's measured, on this Mac:
 
 | | |
 | --- | --- |
@@ -197,13 +190,13 @@ What is measured, on this machine:
 | browser demo | its ten shader pieces, the NRLMSIS table and the seven preset rows are byte-identical to the plugin's (`demo/tools/check_shaders.py`); its JavaScript port of the CPU half is checked by nobody but a reader |
 
 Render cost (`brtest --bench`, the defaults, Detail Half, the median frame):
-**4.4–9 ms at 720p, 6–12 ms at 1080p, 15–32 ms at 4K** — the spread is
-between runs on a machine shared with other builds. Use Detail Quarter at 4K.
+**4.4–9 ms at 720p, 6–12 ms at 1080p, 15–32 ms at 4K**. The spread is
+between runs, on a machine shared with other builds. Use Detail Quarter at 4K.
 The vortex sheet costs **0.4 ms** per RK4 step at 512 nodes, **3.8–4.1 ms** at 2048
 and **13–15 ms** at the 4096-node cap (four threads); a step is 0.8 s of sky time
 at the defaults, so at 4× one frame in twelve waits for it.
 
-What is **not** verified, and is the honest limit of this release:
+What **isn't** verified, and where this release stops:
 
 - **Some yields are assumptions.** The green line's is calibrated to the
   textbook ~1 kR per erg; the red and the N₂ first positive are assumed (see
@@ -213,20 +206,20 @@ What is **not** verified, and is the honest limit of this release:
   real column decays height by height.
 - **The O(¹D) Einstein A is NIST's current 7.5×10⁻³ s⁻¹** (τ 134 s), not the
   older 0.0091 the spec quotes.
-- **The red haze's transport** (wind and diffusion) is not checked, and the
-  resampling adds diffusion of its own near the horizon.
+- **The red haze's transport** (wind and diffusion) isn't checked, and the
+  resampling adds a bit of diffusion of its own near the horizon.
 - **Curtains thinner than the footprint map's texel** (0.6 km overhead, ~8 km
   at 1000 km) are widened to it, at constant integrated brightness.
 - **At the node cap** (4096) the curls stop being refined; the defaults reach
   it after about a minute of sky time.
-- **Eye** adapts per pixel, which CIE 191 does not.
+- **Eye** adapts per pixel, which CIE 191 doesn't.
 - "Curtain Thickness" is **Thickness**: FFGL names stop at 16 characters.
-- Rays are the one stochastic texture, a seeded spectrum standing for
-  field-aligned filamentation the model does not resolve.
+- Rays are the one stochastic texture, a seeded spectrum standing in for the
+  field-aligned filamentation the model doesn't resolve.
 
-No OpenFX port yet. The browser demo is a port, not a measurement: WebGL2
-gives GLSL ES 3.00, not desktop GL 4.1 core, and nothing on the page checks
-anything.
+No OpenFX port yet. The browser demo is a port, so don't treat it as a
+measurement: WebGL2 gives you GLSL ES 3.00 rather than desktop GL 4.1 core, and
+nothing on the page checks anything.
 
 ## Build
 
@@ -240,7 +233,7 @@ are universal (arm64 + x86_64); Windows needs GLEW via vcpkg.
 
 ## Building and testing
 
-The offline harness renders the real plugin classes headlessly:
+The offline harness renders the plugin's own classes, headless:
 
     ./build/brtest --out /tmp/sky.png --frames 600 --substorm 300   the source
     ./build/brtest --over --out /tmp/over.png                       the effect, on a night scene
@@ -279,7 +272,7 @@ This project is built on other people's work — see [ATTRIBUTIONS.md](ATTRIBUTI
 
 MIT.
 
-The physics is from the papers: Hallinan & Davis and Hallinan on arcs as vortex
+The physics comes from the papers: Hallinan & Davis and Hallinan on arcs as vortex
 sheets, Krasny on the regularised sheet, Knight's current–voltage relation,
 Fang et al.'s ionisation parameterisations, NRLMSIS, the NIST atomic data, the
 rate coefficients as GLOW uses them, the CIE colour-matching functions, Hansen
