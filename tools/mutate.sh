@@ -49,7 +49,7 @@ PY
 		printf '   FAIL  %s still PASSES -- the check does not cover this code\n' "$check"
 	else
 		printf '   ok    %s fails against the mutant:\n' "$check"
-		grep -E '^  FAIL' "$WORK/log" | head -3 | sed 's/^/        /'
+		{ grep -E '^  FAIL' "$WORK/log" || true; } | head -3 | sed 's/^/        /'
 		caught=$(( caught + 1 ))
 	fi
 done
