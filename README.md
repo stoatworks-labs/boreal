@@ -15,6 +15,8 @@ the physics up, as two FFGL plugins: **SW Boreal**, a source that's the whole ni
 sky, and **SW Boreal Over**, an effect that adds the aurora to your clip as light.
 Unlike the real thing, it turns up when you ask it to.
 
+The [project page](https://stoatworks-labs.com/software/boreal/) has the downloads, the [user guide](https://stoatworks-labs.com/software/boreal/guide/) and the video.
+
 ![A corona overhead: green curtains with red tops converging on the magnetic zenith, stars behind](docs/hero.png)
 
 <sub>A corona, a few minutes after a substorm: four arcs overhead at
